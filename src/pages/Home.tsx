@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { api, type NearbyHelper } from '../lib/api-client';
+import MapView from '../components/MapView';
+
+const DURATION_OPTIONS = [30, 60, 90, 120] as const;
 
 export default function Home() {
   const navigate = useNavigate();
@@ -9,6 +12,8 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [helpers, setHelpers] = useState<NearbyHelper[]>([]);
   const [loadingHelpers, setLoadingHelpers] = useState(false);
+  const [showMovementModal, setShowMovementModal] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<number>(60);
 
   const loadNearbyHelpers = async () => {
     if (!user?.last_location) return;
@@ -33,10 +38,15 @@ export default function Home() {
     }
   }, [user]);
 
+  const openMovementModal = () => {
+    setShowMovementModal(true);
+  };
+
   const startMovement = async () => {
     try {
-      await api.startMovement('out', 60);
+      await api.startMovement('out', selectedDuration);
       await api.getMe();
+      setShowMovementModal(false);
       navigate(0);
     } catch (error) {
       console.error('Failed to start movement:', error);
@@ -112,10 +122,10 @@ export default function Home() {
             </button>
           ) : (
             <button
-              onClick={startMovement}
+              onClick={openMovementModal}
               className="mt-2 w-full max-w-lg bg-blue-600 text-white py-2 px-4 rounded text-sm hover:bg-blue-700"
             >
-              Go On the Move (60 min)
+              Go On The Move
             </button>
           )}
         </div>
@@ -145,14 +155,13 @@ export default function Home() {
 
       {/* Map View */}
       {viewMode === 'map' && (
-        <div className="h-96 bg-gray-200 flex items-center justify-center">
-          <div className="text-gray-600 text-center">
-            <div className="text-4xl mb-2">📍</div>
-            <p>Map view - Coming soon</p>
-            {helpers.length > 0 && (
-              <p className="text-sm mt-2">{helpers.length} helpers nearby</p>
-            )}
-          </div>
+        <div className="px-4 py-4">
+          <MapView
+            helpers={helpers}
+            userLat={user?.last_location?.lat || 0}
+            userLng={user?.last_location?.lng || 0}
+            userRadiusMiles={user?.radius_miles || 1}
+          />
         </div>
       )}
 
@@ -212,6 +221,50 @@ export default function Home() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Movement Duration Modal */}
+      {showMovementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Go On The Move
+            </h2>
+            <p className="text-gray-600 mb-4">
+              How long will you be available to help?
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {DURATION_OPTIONS.map((duration) => (
+                <button
+                  key={duration}
+                  onClick={() => setSelectedDuration(duration)}
+                  type="button"
+                  className={`py-3 px-4 rounded-lg font-medium border-2 transition ${
+                    selectedDuration === duration
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-900 border-gray-300 hover:border-blue-300'
+                  }`}
+                >
+                  {duration} min
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowMovementModal(false)}
+                className="flex-1 bg-gray-200 text-gray-900 py-2 px-4 rounded-lg font-medium hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={startMovement}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700"
+              >
+                Start
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

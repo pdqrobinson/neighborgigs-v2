@@ -11,14 +11,32 @@ export default function RequestHelp() {
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [helperName, setHelperName] = useState<string | null>(null);
+  const [helper, setHelper] = useState<{ first_name: string; profile_photo: string | null } | null>(null);
+  const [loadingHelper, setLoadingHelper] = useState(true);
 
+  // Fetch helper details
   useEffect(() => {
     if (!helperId) {
       navigate('/home');
       return;
     }
-    setHelperName('Loading...');
+
+    const loadHelper = async () => {
+      try {
+        const { helpers } = await api.getNearbyHelpers(0, 0); // Location doesn't matter, we just want helper info
+        const foundHelper = helpers?.find(h => h.user_id === helperId);
+        if (foundHelper) {
+          setHelper({ first_name: foundHelper.first_name, profile_photo: foundHelper.profile_photo });
+        }
+      } catch (err) {
+        console.error('Failed to load helper:', err);
+        setError('Could not load helper information');
+      } finally {
+        setLoadingHelper(false);
+      }
+    };
+
+    loadHelper();
   }, [helperId, navigate]);
 
   const handleSubmit = async () => {
@@ -63,7 +81,7 @@ export default function RequestHelp() {
           Request Help
         </h1>
         <p className="text-gray-600 mb-6">
-          Send a request to {helperName}
+          Send a request to {loadingHelper ? 'Loading...' : helper?.first_name || 'a helper'}
         </p>
 
         {error && (

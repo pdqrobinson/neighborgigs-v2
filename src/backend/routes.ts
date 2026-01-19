@@ -24,6 +24,29 @@ function errorResponse(code: string, message: string, details?: any, status = 40
   return { error: { code, message, details } };
 }
 
+// Helper function: Check if two points are within radius miles
+async function checkWithinRadius(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+  radiusMiles: number
+): Promise<boolean> {
+  const { data: distance } = await db
+    .rpc('earth_distance', {
+      lat1,
+      lon1: lng1,
+      lat2,
+      lon2: lng2
+    });
+
+  // earth_distance returns meters, convert to miles
+  const distanceMeters = typeof distance === 'number' ? distance : 0;
+  const distanceMiles = distanceMeters / 1609.34;
+
+  return distanceMiles <= radiusMiles;
+}
+
 // === USER ENDPOINTS ===
 
 // 1) Get Current User
@@ -365,7 +388,20 @@ api.post('/api/v1/requests', async (c) => {
     return c.json(errorResponse('FORBIDDEN', 'Helper is not in your neighborhood'), 403);
   }
 
-  // TODO: Add radius distance check using earthdistance
+  // Check if helper is within user's radius
+  if (currentUser.last_lat && currentUser.last_lng && helper.last_lat && helper.last_lng) {
+    const withinRadius = await checkWithinRadius(
+      currentUser.last_lat,
+      currentUser.last_lng,
+      helper.last_lat,
+      helper.last_lng,
+      currentUser.radius_miles
+    );
+
+    if (!withinRadius) {
+      return c.json(errorResponse('FORBIDDEN', `Helper is outside your ${currentUser.radius_miles} mile radius`), 403);
+    }
+  }
 
   const { data, error } = await db
     .from('task_requests')

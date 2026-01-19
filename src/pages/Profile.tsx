@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { api } from '../lib/api-client';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const { user, loading } = useUser();
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.first_name || '');
@@ -47,7 +49,7 @@ export default function Profile() {
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-lg mx-auto px-4 py-3">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate(-1)}
             className="text-blue-600 hover:text-blue-700"
           >
             ← Back
