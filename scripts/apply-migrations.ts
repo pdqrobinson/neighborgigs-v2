@@ -1,3 +1,8 @@
+import dns from 'node:dns';
+
+// 🔥 Force IPv4 DNS resolution - fixes Supabase connection flapping
+dns.setDefaultResultOrder('ipv4first');
+
 import { Client } from 'pg';
 import { readFileSync } from 'fs';
 
@@ -17,16 +22,16 @@ if (!PASSWORD) {
   console.error('');
   console.error('Get your password from:');
   console.error('  https://supabase.com/dashboard/project/kxpglaetbawiugqmihfj/settings/database');
-  console.error('  -> Copy password from "Connection string" -> "Transaction mode"');
+  console.error('  -> Copy password from "Connection string" -> "Session mode"');
   process.exit(1);
 }
 
-// ✅ CORRECT: Direct DB host for DDL (migrations)
-// ❌ WRONG: aws-*.pooler.supabase.com (pooled connections fail for DDL)
+// ✅ Use session mode (not transaction) with explicit SSL for DDL operations
+// Session mode maintains single connection per statement, avoiding pooled connection issues
 const client = new Client({
-  host: 'db.kxpglaetbawiugqmihfj.supabase.co',
-  port: 5432,
-  user: 'postgres',
+  host: 'aws-1-us-east-1.pooler.supabase.com',
+  port: 6543,
+  user: 'postgres.kxpglaetbawiugqmihfj',
   password: PASSWORD,
   database: 'postgres',
   ssl: {
@@ -55,11 +60,49 @@ async function applyMigration(filePath: string, name: string) {
 
   const sql = readFileSync(filePath, 'utf-8');
 
-  // Split SQL into individual statements (simple approach)
-  const statements = sql
-    .split(';')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith('--') && !s.startsWith('/*'));
+  // Better SQL parser that respects $$...$$ delimiters (dollar-quoted strings)
+  // This prevents breaking on semicolons inside function bodies
+  const statements: string[] = [];
+  let currentStatement = '';
+  let inDollarQuote = false;
+
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i];
+    const nextChar = sql[i + 1];
+    const prevChar = sql[i - 1];
+
+    // Check for $$ delimiter start
+    if (char === '$' && nextChar === '$' && !inDollarQuote) {
+      inDollarQuote = true;
+      currentStatement += '$$';
+      i++; // Skip next $
+      continue;
+    }
+
+    // Check for $$ delimiter end
+    if (char === '$' && prevChar === '$' && inDollarQuote) {
+      inDollarQuote = false;
+      currentStatement += '$$';
+      continue;
+    }
+
+    currentStatement += char;
+
+    // Only split on semicolons when NOT inside $$...$$
+    if (char === ';' && !inDollarQuote) {
+      const trimmed = currentStatement.trim();
+      if (trimmed.length > 0 && !trimmed.startsWith('--') && !trimmed.startsWith('/*')) {
+        statements.push(trimmed);
+      }
+      currentStatement = '';
+    }
+  }
+
+  // Add any remaining content
+  const remaining = currentStatement.trim();
+  if (remaining.length > 0 && !remaining.startsWith('--') && !remaining.startsWith('/*')) {
+    statements.push(remaining);
+  }
 
   console.log(`Found ${statements.length} SQL statements to execute...`);
 
@@ -97,7 +140,7 @@ async function applyMigration(filePath: string, name: string) {
 
 async function main() {
   console.log('=== NeighborGigs Phase One Database Migrations ===\n');
-  console.log('Connecting to: db.kxpglaetbawiugqmihfj.supabase.co (direct host)\n');
+  console.log('Connecting to: aws-1-us-east-1.pooler.supabase.com:6543 (session mode)\n');
 
   try {
     await client.connect();
@@ -115,7 +158,7 @@ async function main() {
 
     console.log('Demo users created:');
     console.log('  - Alex (Requester): 00000000-0000-0000-0000-000000000001');
-    console.log('  - Jamie (Helper):   00000000-0000-0000000000002');
+    console.log('  - Jamie (Helper):   00000000-0000-0000-0000000000002');
     console.log('  - Taylor (Helper): 00000000-0000-000000000003');
     console.log('  - Jordan (Idle):    00000000-0000-000000000004');
     console.log('');
