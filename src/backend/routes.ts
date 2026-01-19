@@ -559,6 +559,133 @@ api.post('/api/v1/requests/:requestId/cancel', async (c) => {
   return c.json({ request: data });
 });
 
+// === BROADCAST ENDPOINTS ===
+
+// 17) List Active Broadcasts
+api.get('/api/v1/broadcasts', async (c) => {
+  const userId = getUserId(c);
+
+  const { data: currentUser } = await db
+    .from('users')
+    .select('neighborhood_id')
+    .eq('id', userId)
+    .single();
+
+  if (!currentUser) {
+    return c.json(errorResponse('NOT_FOUND', 'User not found'), 404);
+  }
+
+  const { data: broadcasts, error } = await db
+    .from('task_requests')
+    .select(`
+      *,
+      requester:users!task_requests_requester_id_fkey (
+        id,
+        first_name,
+        profile_photo
+      )
+    `)
+    .eq('is_broadcast', true)
+    .eq('status', 'sent')
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch broadcasts'), 500);
+  }
+
+  return c.json({ broadcasts: broadcasts || [] });
+});
+
+// 18) Create Broadcast
+api.post('/api/v1/broadcasts', async (c) => {
+  const userId = getUserId(c);
+  const body = await c.req.json();
+  const { type, message, expiresInMinutes } = body;
+
+  if (!['need_help', 'offer_help'].includes(type)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'type must be need_help or offer_help'), 400);
+  }
+
+  if (!message || message.length < 1 || message.length > 280) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'message must be 1-280 characters'), 400);
+  }
+
+  if (![15, 30, 60, 120].includes(expiresInMinutes)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'expiresInMinutes must be 15, 30, 60, or 120'), 400);
+  }
+
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+
+  const { data, error } = await db
+    .from('task_requests')
+    .insert({
+      requester_id: userId,
+      helper_id: userId, // Self-reference for broadcasts
+      message,
+      suggested_tip_usd: 0, // Broadcasts don't have tips initially
+      status: 'sent',
+      expires_at: expiresAt,
+      is_broadcast: true,
+      broadcast_type: type,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to create broadcast'), 500);
+  }
+
+  return c.json({ broadcast: data }, 201);
+});
+
+// 19) Respond to Broadcast
+api.post('/api/v1/broadcasts/:id/respond', async (c) => {
+  const userId = getUserId(c);
+  const broadcastId = c.req.param('id');
+  const body = await c.req.json();
+  const { suggested_tip_usd } = body;
+
+  const { data: broadcast, error: broadcastError } = await db
+    .from('task_requests')
+    .select('*')
+    .eq('id', broadcastId)
+    .eq('is_broadcast', true)
+    .eq('status', 'sent')
+    .single();
+
+  if (broadcastError || !broadcast) {
+    return c.json(errorResponse('NOT_FOUND', 'Broadcast not found or already responded to'), 404);
+  }
+
+  if (broadcast.requester_id === userId) {
+    return c.json(errorResponse('FORBIDDEN', 'You cannot respond to your own broadcast'), 403);
+  }
+
+  if (!suggested_tip_usd || ![5, 10, 15, 20].includes(suggested_tip_usd)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'suggested_tip_usd must be 5, 10, 15, or 20'), 400);
+  }
+
+  const { data, error } = await db
+    .from('task_requests')
+    .insert({
+      requester_id: userId,
+      helper_id: broadcast.requester_id,
+      message: `Responding to: "${broadcast.message}"`,
+      suggested_tip_usd,
+      status: 'sent',
+      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to respond to broadcast'), 500);
+  }
+
+  return c.json({ request: data }, 201);
+});
+
 // === TASK ENDPOINTS ===
 
 // 12) Get My Active Task

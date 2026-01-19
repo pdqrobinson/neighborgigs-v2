@@ -70,6 +70,16 @@ export interface LedgerEntry {
   created_at: string;
 }
 
+export interface Broadcast {
+  id: string;
+  requester_id: string;
+  broadcast_type: 'need_help' | 'offer_help';
+  message: string;
+  expires_at: string;
+  created_at: string;
+  requester?: { id: string; first_name: string; profile_photo: string | null };
+}
+
 function apiFetch<T>(
   endpoint: string,
   options?: RequestInit & { idempotencyKey?: string }
@@ -134,15 +144,32 @@ export const api = {
     apiFetch<{ helpers: NearbyHelper[] }>(`/nearby/helpers?lat=${lat}&lng=${lng}`),
 
   // Movement
-  startMovement: (direction: 'out' | 'home', duration_minutes: number) =>
+  startMovement: (direction: 'out' | 'home', expiresInMinutes: number) =>
     apiFetch<{ movement: User['movement'] }>('/movement/start', {
       method: 'POST',
-      body: JSON.stringify({ direction, duration_minutes }),
+      body: JSON.stringify({ direction, duration_minutes: expiresInMinutes }),
     }),
 
   stopMovement: () =>
     apiFetch<{ movement: User['movement'] }>('/movement/stop', {
       method: 'POST',
+    }),
+
+  // Broadcasts
+  getBroadcasts: () =>
+    apiFetch<{ broadcasts: Broadcast[] }>('/broadcasts'),
+
+  createBroadcast: (type: 'need_help' | 'offer_help', message: string, expiresInMinutes: number) =>
+    apiFetch<{ broadcast: Broadcast }>('/broadcasts', {
+      method: 'POST',
+      body: JSON.stringify({ type, message, expiresInMinutes }),
+    }),
+
+  respondToBroadcast: (broadcastId: string, suggested_tip_usd: number) =>
+    apiFetch<{ request: TaskRequest }>(`/broadcasts/${broadcastId}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ suggested_tip_usd }),
+      idempotencyKey: crypto.randomUUID(),
     }),
 
   // Requests

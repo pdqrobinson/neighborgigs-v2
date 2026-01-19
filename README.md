@@ -1,18 +1,18 @@
 # NeighborGigs - Phase One
 
-NeighborGigs is a **hyperlocal, movement-based task app** that lets neighbors help each other with immediate, nearby errands.
+NeighborGigs is a **hyperlocal, broadcast-based task app** that lets neighbors help each other with immediate, nearby errands.
 
 ## Project Notes
 
 NeighborGigs Phase One delivers a fully functional core loop:
 
-**On the move → request → accept → complete → earn**
+**Broadcast → respond → accept → complete → earn**
 
 ### Core Principles
 
+- **Intent-first broadcasts**: Users broadcast specific needs ("Need someone with a truck") or offers ("Heading to grocery store in 15 mins")
 - **Hyperlocal containment**: Users only see activity within their assigned neighborhood and selected radius (1-3 miles)
 - **Map as source of truth**: The map defines what exists; list/grid views mirror the same data
-- **Movement-based availability**: Only users actively "on the move" are visible as helpers
 - **Explicit state only**: No inferred or implicit state; all transitions are intentional and recorded
 - **One active task per helper**: A helper may have at most one active task at a time
 - **Tasks are immediate and short-lived**: Tasks are created with assumption of near-term execution
@@ -105,6 +105,11 @@ Authentication: `X-User-Id` header (demo mode uses fixed UUID)
 - `POST /requests/:requestId/accept` - Accept request (creates task)
 - `POST /requests/:requestId/decline` - Decline request
 - `POST /requests/:requestId/cancel` - Cancel own sent request
+
+### Broadcast Endpoints
+- `GET /broadcasts` - List active broadcasts in neighborhood
+- `POST /broadcasts` - Create a new broadcast (need_help or offer_help)
+- `POST /broadcasts/:id/respond` - Respond to a broadcast
 
 ### Task Endpoints
 - `GET /tasks/active` - Get active task for current user

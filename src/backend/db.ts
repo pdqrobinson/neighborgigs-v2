@@ -41,6 +41,8 @@ export interface TaskRequest {
   status: 'sent' | 'accepted' | 'declined' | 'expired';
   created_at: string;
   expires_at: string;
+  is_broadcast?: boolean;
+  broadcast_type?: 'need_help' | 'offer_help' | null;
 }
 
 export interface Task {
