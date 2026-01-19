@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { api } from '../lib/api-client';
 
+const DEMO_LOCATION = { lat: 33.4484, lng: -112.0740 };
+
 export default function LocationGate() {
   const navigate = useNavigate();
   const { user, loading, setLocation } = useUser();
@@ -15,30 +17,36 @@ export default function LocationGate() {
       navigate('/home');
       return;
     }
+  }, [user, loading, navigate]);
 
-    const requestLocation = async () => {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-          });
+  const requestLocation = async () => {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
         });
+      });
 
-        const { latitude, longitude } = position.coords;
-        await setLocation(latitude, longitude);
+      const { latitude, longitude } = position.coords;
+      await setLocation(latitude, longitude);
 
-        // Auto-assign neighborhood
-        await api.updateNeighborhood(latitude, longitude);
+      await api.updateNeighborhood(latitude, longitude);
+      navigate('/home');
+    } catch (err) {
+      setError('Location permission required to use NeighborGigs');
+    }
+  };
 
-        navigate('/home');
-      } catch (err) {
-        setError('Location permission required to use NeighborGigs');
-      }
-    };
-
-    requestLocation();
-  }, [user, loading, setLocation, navigate]);
+  const useDemoMode = async () => {
+    try {
+      await setLocation(DEMO_LOCATION.lat, DEMO_LOCATION.lng);
+      await api.updateNeighborhood(DEMO_LOCATION.lat, DEMO_LOCATION.lng);
+      navigate('/home');
+    } catch (err) {
+      setError('Failed to initialize demo mode');
+    }
+  };
 
   if (loading) {
     return (
@@ -64,12 +72,20 @@ export default function LocationGate() {
             {error}
           </div>
         )}
-        <button
-          onClick={() => window.location.reload()}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition"
-        >
-          Enable Location
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={requestLocation}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition"
+          >
+            Enable Location
+          </button>
+          <button
+            onClick={useDemoMode}
+            className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition"
+          >
+            Demo Mode
+          </button>
+        </div>
       </div>
     </div>
   );

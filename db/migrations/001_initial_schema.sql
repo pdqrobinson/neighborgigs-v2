@@ -109,6 +109,16 @@ create table task_requests (
 create index task_requests_helper_status_idx on task_requests(helper_id, status);
 create index task_requests_expires_at_idx on task_requests(expires_at);
 
+-- 8. withdrawal_requests (for idempotent withdrawal tracking)
+create table withdrawal_requests (
+  id uuid primary key,
+  wallet_id uuid not null references wallets(id) on delete cascade,
+  amount_usd numeric not null,
+  created_at timestamptz not null default now()
+);
+
+create unique index withdrawal_requests_id_idx on withdrawal_requests(id);
+
 -- Required indexes for performance
 create index users_location_idx
 on users using gist (ll_to_earth(last_lat, last_lng));
@@ -126,3 +136,4 @@ alter table wallets disable row level security;
 alter table ledger_entries disable row level security;
 alter table tasks disable row level security;
 alter table task_requests disable row level security;
+alter table withdrawal_requests disable row level security;

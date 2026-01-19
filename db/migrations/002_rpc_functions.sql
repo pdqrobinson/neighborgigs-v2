@@ -26,10 +26,10 @@ as $$
     u.first_name,
     u.profile_photo,
     round(
-      earth_distance(
+      (earth_distance(
         ll_to_earth(u.last_lat, u.last_lng),
         ll_to_earth(p_lat, p_lng)
-      ) / 1609.34,
+      ) / 1609.34)::numeric,
       2
     ) as distance_miles,
     u.direction,

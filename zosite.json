@@ -4,8 +4,8 @@
   "entrypoint": "bun run dev",
   "env": {
     "VITE_ZO_SITE_DEMO_VARIANT": "blank",
-    "SUPABASE_URL": "",
-    "SUPABASE_SERVICE_ROLE_KEY": ""
+    "SUPABASE_URL": "https://kxpglaetbawiugqmihfj.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4cGdsYWV0YmF3aXVncW1paGZqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODc1NzYwOCwiZXhwIjoyMDg0MzMzNjA4fQ.o5mQ1vylAbs12UFMgs8FMDo_UaHAaN3FyEJM8Te7pUI"
   },
   "publish": {
     "label": "neighborgigs",
@@ -16,8 +16,8 @@
       "NODE_ENV": "production",
       "ZO_CLIENT_IDENTITY_TOKEN": "none",
       "VITE_ZO_SITE_DEMO_VARIANT": "blank",
-      "SUPABASE_URL": "",
+      "SUPABASE_URL": "htpps://ftgclimxdaufufagsmad.supabase.co",
       "SUPABASE_SERVICE_ROLE_KEY": ""
     }
-  },
+  }
 }
