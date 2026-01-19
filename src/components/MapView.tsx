@@ -2,7 +2,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { NearbyHelper } from '../lib/api-client';
+import type { Broadcast } from '../lib/api-client';
 
 // Fix default marker icon issue with Leaflet + React
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
 });
 
 interface MapViewProps {
-  helpers: NearbyHelper[];
+  broadcasts: Broadcast[];
   userLat: number;
   userLng: number;
   userRadiusMiles: number;
@@ -30,7 +30,7 @@ function MapController({ userLat, userLng, userRadiusMiles }: { userLat: number;
   return null;
 }
 
-export default function MapView({ helpers, userLat, userLng, userRadiusMiles }: MapViewProps) {
+export default function MapView({ broadcasts, userLat, userLng, userRadiusMiles }: MapViewProps) {
   if (!userLat || !userLng) {
     return (
       <div className="h-96 bg-gray-200 flex items-center justify-center">
@@ -77,34 +77,42 @@ export default function MapView({ helpers, userLat, userLng, userRadiusMiles }: 
         <Popup>You are here</Popup>
       </Marker>
 
-      {/* Helper markers */}
-      {helpers.map((helper) => (
-        <Marker
-          key={helper.user_id}
-          position={[helper.last_location.lat, helper.last_location.lng]}
-        >
-          <Popup>
-            <div className="p-2 min-w-[200px]">
-              <h3 className="font-semibold text-gray-900 mb-2">{helper.first_name}</h3>
-              <p className="text-sm text-gray-600 mb-1">
-                {helper.direction === 'out' ? 'Going out' : 'Heading home'}
-              </p>
-              <p className="text-sm text-gray-600 mb-1">
-                {helper.distance_miles.toFixed(1)} miles away
-              </p>
-              <p className="text-xs text-gray-500 mb-3">
-                until {new Date(helper.expires_at).toLocaleTimeString()}
-              </p>
-              <a
-                href={`/request/${helper.user_id}`}
-                className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded text-sm hover:bg-blue-700"
-              >
-                Request Help
-              </a>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      {/* Broadcast markers */}
+      {broadcasts
+        .filter((b) => b.last_lat && b.last_lng)
+        .map((broadcast) => (
+          <Marker
+            key={broadcast.id}
+            position={[broadcast.last_lat!, broadcast.last_lng!]}
+          >
+            <Popup>
+              <div className="p-2 min-w-[200px]">
+                <h3 className="font-semibold text-gray-900 mb-2">
+                  {broadcast.requester?.first_name || 'Neighbor'}
+                </h3>
+                <span
+                  className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
+                    broadcast.broadcast_type === 'need_help'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  {broadcast.broadcast_type === 'need_help' ? 'Need Help' : 'Offering Help'}
+                </span>
+                <p className="text-sm text-gray-900 mb-1">{broadcast.message || broadcast.description}</p>
+                <p className="text-xs text-gray-500 mb-3">
+                  expires {new Date(broadcast.expires_at).toLocaleTimeString()}
+                </p>
+                <button
+                  onClick={() => window.location.href = `/broadcasts/${broadcast.id}/respond`}
+                  className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded text-sm hover:bg-blue-700"
+                >
+                  Respond
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
     </MapContainer>
   );
 }

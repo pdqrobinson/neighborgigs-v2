@@ -48,13 +48,15 @@ export interface TaskRequest {
 export interface Task {
   id: string;
   requester_id: string;
-  helper_id: string;
+  helper_id: string | null;
   description: string;
   tip_amount_usd: number;
-  status: 'accepted' | 'in_progress' | 'completed';
+  status: 'broadcast' | 'accepted' | 'in_progress' | 'completed';
   proof_photo_url: string | null;
   created_at: string;
   completed_at: string | null;
+  broadcast_type?: 'need_help' | 'offer_help' | null;
+  expires_at?: string | null;
 }
 
 export interface Wallet {

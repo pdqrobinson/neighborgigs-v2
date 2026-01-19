@@ -43,15 +43,17 @@ export interface TaskRequest {
 export interface Task {
   id: string;
   requester_id: string;
-  helper_id: string;
+  helper_id: string | null;
   description: string;
   tip_amount_usd: number;
-  status: 'accepted' | 'in_progress' | 'completed';
+  status: 'broadcast' | 'accepted' | 'in_progress' | 'completed';
   proof_photo_url: string | null;
   created_at: string;
   completed_at: string | null;
-  requester?: { id: string; first_name: string; profile_photo: string | null };
-  helper?: { id: string; first_name: string; profile_photo: string | null };
+  broadcast_type?: 'need_help' | 'offer_help' | null;
+  expires_at?: string | null;
+  requester?: { id: string; first_name: string | null; profile_photo: string | null };
+  helper?: { id: string; first_name: string | null; profile_photo: string | null };
 }
 
 export interface Wallet {
@@ -74,7 +76,7 @@ export interface Broadcast {
   id: string;
   requester_id: string;
   broadcast_type: 'need_help' | 'offer_help';
-  message: string;
+  description: string;
   expires_at: string;
   created_at: string;
   requester?: { id: string; first_name: string; profile_photo: string | null };
@@ -159,10 +161,10 @@ export const api = {
   getBroadcasts: () =>
     apiFetch<{ broadcasts: Broadcast[] }>('/broadcasts'),
 
-  createBroadcast: (type: 'need_help' | 'offer_help', message: string, expiresInMinutes: number) =>
+  createBroadcast: (type: 'need_help' | 'offer_help', description: string, expiresInMinutes: number) =>
     apiFetch<{ broadcast: Broadcast }>('/broadcasts', {
       method: 'POST',
-      body: JSON.stringify({ type, message, expiresInMinutes }),
+      body: JSON.stringify({ type, description, expiresInMinutes }),
     }),
 
   respondToBroadcast: (broadcastId: string, suggested_tip_usd: number) =>

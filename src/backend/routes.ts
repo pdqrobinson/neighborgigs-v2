@@ -576,17 +576,16 @@ api.get('/api/v1/broadcasts', async (c) => {
   }
 
   const { data: broadcasts, error } = await db
-    .from('task_requests')
+    .from('tasks')
     .select(`
       *,
-      requester:users!task_requests_requester_id_fkey (
+      requester:users!tasks_requester_id_fkey (
         id,
         first_name,
         profile_photo
       )
     `)
-    .eq('is_broadcast', true)
-    .eq('status', 'sent')
+    .eq('status', 'broadcast')
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false });
 
@@ -603,6 +602,8 @@ api.post('/api/v1/broadcasts', async (c) => {
   const body = await c.req.json();
   const { type, message, expiresInMinutes } = body;
 
+  console.log('=== CREATE BROADCAST ===', { userId, type, message, expiresInMinutes });
+
   if (!['need_help', 'offer_help'].includes(type)) {
     return c.json(errorResponse('VALIDATION_ERROR', 'type must be need_help or offer_help'), 400);
   }
@@ -617,22 +618,38 @@ api.post('/api/v1/broadcasts', async (c) => {
 
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
 
+  // Get user's current location for the broadcast
+  const { data: currentUser } = await db
+    .from('users')
+    .select('last_lat, last_lng')
+    .eq('id', userId)
+    .single();
+
+  if (!currentUser || !currentUser.last_lat || !currentUser.last_lng) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'User location not available'), 400);
+  }
+
+  // Insert broadcast into tasks table (not task_requests!)
   const { data, error } = await db
-    .from('task_requests')
+    .from('tasks')
     .insert({
       requester_id: userId,
-      helper_id: userId, // Self-reference for broadcasts
-      message,
-      suggested_tip_usd: 0, // Broadcasts don't have tips initially
-      status: 'sent',
-      expires_at: expiresAt,
-      is_broadcast: true,
+      helper_id: null,
+      description: message,
+      tip_amount_usd: 0,
+      status: 'broadcast',
       broadcast_type: type,
+      expires_at: expiresAt,
+      last_lat: currentUser.last_lat,
+      last_lng: currentUser.last_lng,
     })
     .select()
     .single();
 
+  console.log('Broadcast insert result:', { data, error });
+
   if (error) {
+    console.error('Failed to create broadcast:', error);
     return c.json(errorResponse('INTERNAL_ERROR', 'Failed to create broadcast'), 500);
   }
 
@@ -646,44 +663,55 @@ api.post('/api/v1/broadcasts/:id/respond', async (c) => {
   const body = await c.req.json();
   const { suggested_tip_usd } = body;
 
-  const { data: broadcast, error: broadcastError } = await db
-    .from('task_requests')
-    .select('*')
-    .eq('id', broadcastId)
-    .eq('is_broadcast', true)
-    .eq('status', 'sent')
-    .single();
-
-  if (broadcastError || !broadcast) {
-    return c.json(errorResponse('NOT_FOUND', 'Broadcast not found or already responded to'), 404);
+  if (typeof suggested_tip_usd !== 'number' || suggested_tip_usd <= 0) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'suggested_tip_usd must be a positive number'), 400);
   }
 
-  if (broadcast.requester_id === userId) {
-    return c.json(errorResponse('FORBIDDEN', 'You cannot respond to your own broadcast'), 403);
-  }
-
-  if (!suggested_tip_usd || ![5, 10, 15, 20].includes(suggested_tip_usd)) {
+  if (![5, 10, 15, 20].includes(suggested_tip_usd)) {
     return c.json(errorResponse('VALIDATION_ERROR', 'suggested_tip_usd must be 5, 10, 15, or 20'), 400);
   }
 
-  const { data, error } = await db
+  const { data: broadcast, error: broadcastError } = await db
+    .from('tasks')
+    .select('*')
+    .eq('id', broadcastId)
+    .eq('status', 'broadcast')
+    .single();
+
+  if (broadcastError || !broadcast) {
+    return c.json(errorResponse('NOT_FOUND', 'Broadcast not found'), 404);
+  }
+
+  // Cannot respond to own broadcast
+  if (broadcast.requester_id === userId) {
+    return c.json(errorResponse('FORBIDDEN', 'Cannot respond to your own broadcast'), 403);
+  }
+
+  // Check if already expired
+  if (broadcast.expires_at && new Date(broadcast.expires_at) < new Date()) {
+    return c.json(errorResponse('CONFLICT', 'Broadcast has expired'), 409);
+  }
+
+  // Create task_request against this task
+  const { data: taskRequest, error: requestError } = await db
     .from('task_requests')
     .insert({
-      requester_id: userId,
-      helper_id: broadcast.requester_id,
-      message: `Responding to: "${broadcast.message}"`,
+      task_id: broadcast.id,
+      requester_id: broadcast.requester_id,
+      helper_id: userId,
+      message: `Responding to broadcast: ${broadcast.description}`,
       suggested_tip_usd,
       status: 'sent',
-      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes
     })
     .select()
     .single();
 
-  if (error) {
+  if (requestError) {
     return c.json(errorResponse('INTERNAL_ERROR', 'Failed to respond to broadcast'), 500);
   }
 
-  return c.json({ request: data }, 201);
+  return c.json({ request: taskRequest }, 201);
 });
 
 // === TASK ENDPOINTS ===

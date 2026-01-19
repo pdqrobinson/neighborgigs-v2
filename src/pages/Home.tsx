@@ -13,9 +13,9 @@ export default function Home() {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loadingBroadcasts, setLoadingBroadcasts] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
-  const [selectedBroadcastType, setSelectedBroadcastType] = useState<'need_help' | 'offer_help'>('offer_help');
+  const [broadcastType, setBroadcastType] = useState<'need_help' | 'offer_help'>('need_help');
   const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [selectedDuration, setSelectedDuration] = useState<number>(30);
+  const [selectedDuration, setSelectedDuration] = useState<number>(60);
 
   const loadBroadcasts = async () => {
     setLoadingBroadcasts(true);
@@ -30,45 +30,24 @@ export default function Home() {
   };
 
   useEffect(() => {
-    loadBroadcasts();
-  }, []);
-
-  const openBroadcastModal = () => {
-    setShowBroadcastModal(true);
-    setBroadcastMessage('');
-    setSelectedDuration(30);
-  };
+    if (user) {
+      loadBroadcasts();
+    }
+  }, [user]);
 
   const createBroadcast = async () => {
-    if (!broadcastMessage.trim()) return;
-
     try {
-      await api.createBroadcast(selectedBroadcastType, broadcastMessage, selectedDuration);
-      setShowBroadcastModal(false);
+      await api.createBroadcast(broadcastType, broadcastMessage, selectedDuration);
       await loadBroadcasts();
+      setShowBroadcastModal(false);
+      setBroadcastMessage('');
     } catch (error) {
       console.error('Failed to create broadcast:', error);
     }
   };
 
-  const respondToBroadcast = async (broadcastId: string) => {
-    const tip = prompt('Tip amount ($5, $10, $15, or $20):', '10');
-    if (!tip) return;
-
-    const tipAmount = parseInt(tip);
-    if (![5, 10, 15, 20].includes(tipAmount)) {
-      alert('Tip must be $5, $10, $15, or $20');
-      return;
-    }
-
-    try {
-      await api.respondToBroadcast(broadcastId, tipAmount);
-      alert('Response sent! Wait for them to accept.');
-      navigate('/active-task');
-    } catch (error) {
-      console.error('Failed to respond to broadcast:', error);
-      alert('Failed to send response');
-    }
+  const handleRespond = (broadcast: Broadcast) => {
+    navigate(`/broadcasts/${broadcast.id}/respond`);
   };
 
   if (loading) {
@@ -102,7 +81,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Location & Neighborhood Info */}
+      {/* Location & Broadcast Button */}
       {user && (
         <div className="bg-white border-b border-gray-200 px-4 py-2">
           <div className="max-w-lg mx-auto text-sm text-gray-600">
@@ -110,18 +89,14 @@ export default function Home() {
             <span className="mx-2">•</span>
             <span>{user.radius_miles} mile radius</span>
           </div>
+          <button
+            onClick={() => setShowBroadcastModal(true)}
+            className="mt-2 w-full max-w-lg bg-blue-600 text-white py-2 px-4 rounded text-sm hover:bg-blue-700"
+          >
+            Start a Broadcast
+          </button>
         </div>
       )}
-
-      {/* Main Action Button */}
-      <div className="max-w-lg mx-auto px-4 py-4">
-        <button
-          onClick={openBroadcastModal}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700"
-        >
-          Start a Broadcast
-        </button>
-      </div>
 
       {/* View Toggle */}
       <div className="max-w-lg mx-auto px-4 py-3 flex justify-center">
@@ -142,10 +117,18 @@ export default function Home() {
           >
             Map
           </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              viewMode === 'list' ? 'bg-white shadow text-gray-900' : 'text-gray-600'
+            }`}
+          >
+            List
+          </button>
         </div>
       </div>
 
-      {/* Broadcasts Feed */}
+      {/* Broadcasts View */}
       {viewMode === 'broadcasts' && (
         <div className="max-w-lg mx-auto px-4 py-4">
           {loadingBroadcasts ? (
@@ -154,78 +137,100 @@ export default function Home() {
             <div className="text-center py-12">
               <div className="text-4xl mb-2">📢</div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                No broadcasts right now
+                No broadcasts yet
               </h2>
               <p className="text-gray-600">
-                Be the first to broadcast to your neighborhood!
+                Be the first! Start a broadcast to offer help or ask for something.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {broadcasts.map((broadcast) => {
-                const isExpired = new Date(broadcast.expires_at) < new Date();
-                return (
-                  <div
-                    key={broadcast.id}
-                    className={`bg-white rounded-lg shadow-sm border p-4 ${
-                      isExpired ? 'border-gray-300 opacity-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          broadcast.broadcast_type === 'need_help'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}>
-                          {broadcast.broadcast_type === 'need_help' ? 'Need Help' : 'Offering Help'}
-                        </span>
+              {broadcasts.map((broadcast) => (
+                <div
+                  key={broadcast.id}
+                  onClick={() => handleRespond(broadcast)}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:bg-gray-50 transition"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600">
+                          {broadcast.requester?.profile_photo ? (
+                            <img
+                              src={broadcast.requester.profile_photo}
+                              alt={broadcast.requester.first_name || '?'}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-lg">
+                              {broadcast.requester?.first_name?.[0] || '?'}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            {broadcast.requester?.first_name || 'Neighbor'}
+                          </h3>
+                          <span
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                              broadcast.broadcast_type === 'need_help'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {broadcast.broadcast_type === 'need_help' ? 'Need Help' : 'Offering Help'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(broadcast.expires_at).toLocaleTimeString()}
+                      <p className="text-sm text-gray-900">{broadcast.message}</p>
+                      <div className="text-xs text-gray-500 mt-1">
+                        expires {new Date(broadcast.expires_at).toLocaleTimeString()}
                       </div>
                     </div>
-                    <p className="text-gray-900 mb-3">{broadcast.message}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {broadcast.requester?.profile_photo ? (
-                          <img
-                            src={broadcast.requester.profile_photo}
-                            alt={broadcast.requester.first_name}
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 text-xs">
-                            {broadcast.requester?.first_name[0]}
-                          </div>
-                        )}
-                        <span className="text-sm text-gray-600">{broadcast.requester?.first_name}</span>
-                      </div>
-                      {!isExpired && broadcast.requester_id !== '00000000-0000-0000-0000-000000000001' && (
-                        <button
-                          onClick={() => respondToBroadcast(broadcast.id)}
-                          className="bg-blue-600 text-white py-1 px-3 rounded text-sm hover:bg-blue-700"
-                        >
-                          Respond
-                        </button>
-                      )}
+                    <div className="text-xs text-gray-500">
+                      {new Date(broadcast.created_at).toLocaleString()}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Map View - show message to use Broadcasts */}
+      {/* Map View */}
       {viewMode === 'map' && (
         <div className="px-4 py-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-            <div className="text-2xl mb-2">📍</div>
-            <p className="text-gray-700">
-              Map view for broadcasts coming soon! Use the Broadcasts feed for now.
-            </p>
+          {loadingBroadcasts ? (
+            <div className="text-center py-8 text-gray-600">Loading map...</div>
+          ) : broadcasts.length === 0 ? (
+            <div className="text-center py-12 text-gray-600">
+              <div className="text-4xl mb-2">🗺️</div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                No broadcasts on the map
+              </h2>
+              <p className="text-gray-600">
+                Start a broadcast to see it on the map!
+              </p>
+            </div>
+          ) : (
+            <div className="max-w-lg mx-auto">
+              <MapView
+                broadcasts={broadcasts}
+                userLat={user?.last_location?.lat || 0}
+                userLng={user?.last_location?.lng || 0}
+                userRadiusMiles={user?.radius_miles || 1}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* List View (placeholder for now) */}
+      {viewMode === 'list' && (
+        <div className="px-4 py-4">
+          <div className="text-center py-12 text-gray-600">
+            List view coming soon!
           </div>
         </div>
       )}
@@ -237,17 +242,12 @@ export default function Home() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               Start a Broadcast
             </h2>
-            <p className="text-gray-600 mb-4">
-              What do you need or can you help with?
-            </p>
-            
-            {/* Type Toggle */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="flex gap-2 mb-4">
               <button
-                onClick={() => setSelectedBroadcastType('need_help')}
+                onClick={() => setBroadcastType('need_help')}
                 type="button"
-                className={`py-3 px-4 rounded-lg font-medium border-2 transition ${
-                  selectedBroadcastType === 'need_help'
+                className={`flex-1 py-3 px-4 rounded-lg font-medium border-2 transition ${
+                  broadcastType === 'need_help'
                     ? 'bg-red-600 text-white border-red-600'
                     : 'bg-white text-gray-900 border-gray-300 hover:border-red-300'
                 }`}
@@ -255,10 +255,10 @@ export default function Home() {
                 Need Help
               </button>
               <button
-                onClick={() => setSelectedBroadcastType('offer_help')}
+                onClick={() => setBroadcastType('offer_help')}
                 type="button"
-                className={`py-3 px-4 rounded-lg font-medium border-2 transition ${
-                  selectedBroadcastType === 'offer_help'
+                className={`flex-1 py-3 px-4 rounded-lg font-medium border-2 transition ${
+                  broadcastType === 'offer_help'
                     ? 'bg-green-600 text-white border-green-600'
                     : 'bg-white text-gray-900 border-gray-300 hover:border-green-300'
                 }`}
@@ -266,50 +266,37 @@ export default function Home() {
                 Offering Help
               </button>
             </div>
-
-            {/* Message Input */}
+            <textarea
+              value={broadcastMessage}
+              onChange={(e) => setBroadcastMessage(e.target.value)}
+              placeholder={broadcastType === 'need_help'
+                ? 'Need someone with a truck for a quick pickup'
+                : 'Heading to grocery store in 15 mins—need anything?'
+              }
+              className="w-full border border-gray-300 rounded-lg p-3 mb-4 h-24 resize-none"
+              maxLength={280}
+            />
             <div className="mb-4">
-              <textarea
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-                placeholder={
-                  selectedBroadcastType === 'offer_help'
-                    ? "Heading to Fry's in 15 mins, need anything?"
-                    : "Need someone with a truck for a quick pickup"
-                }
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none"
-                rows={3}
-                maxLength={280}
-              />
-              <div className="text-xs text-gray-500 text-right mt-1">
-                {broadcastMessage.length}/280
-              </div>
-            </div>
-
-            {/* Duration Selection */}
-            <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-2">
-                How long should this broadcast be active?
-              </p>
-              <div className="grid grid-cols-4 gap-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                How long?
+              </label>
+              <div className="grid grid-cols-2 gap-2">
                 {BROADCAST_DURATION_OPTIONS.map((duration) => (
                   <button
                     key={duration}
                     onClick={() => setSelectedDuration(duration)}
                     type="button"
-                    className={`py-2 px-2 rounded-lg font-medium text-sm border-2 transition ${
+                    className={`py-2 px-3 rounded-lg font-medium border-2 transition text-sm ${
                       selectedDuration === duration
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-white text-gray-900 border-gray-300 hover:border-blue-300'
                     }`}
                   >
-                    {duration}m
+                    {duration} min
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Action Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowBroadcastModal(false)}

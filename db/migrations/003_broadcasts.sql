@@ -1,27 +1,27 @@
--- Migration: Add broadcast support to task_requests
--- Broadcasts are open task_requests that haven't targeted a specific helper yet
+-- Migration: Add broadcast support to tasks table
+-- Broadcasts are tasks in an early state with no helper yet
 --
 -- APPLY INSTRUCTIONS:
 -- 1. Go to https://supabase.com/dashboard/project/kxpglaetbawiugqmihfj/sql
--- 2. Copy and paste the SQL below
+-- 2. Copy and paste SQL below
 -- 3. Click "Run" to execute
 --
--- Broadcasts are open task_requests that haven't targeted a specific helper yet
+-- Make helper_id nullable (task can exist without helper)
+ALTER TABLE tasks 
+ALTER COLUMN helper_id DROP NOT NULL;
 
--- Add broadcast columns to task_requests
-ALTER TABLE task_requests 
-ADD COLUMN is_broadcast BOOLEAN DEFAULT FALSE,
+-- Add broadcast_type to tasks
+ALTER TABLE tasks
 ADD COLUMN broadcast_type TEXT;
 
 -- Add constraint for valid broadcast types
-ALTER TABLE task_requests 
+ALTER TABLE tasks 
 ADD CONSTRAINT check_broadcast_type 
 CHECK (broadcast_type IN ('need_help', 'offer_help') OR broadcast_type IS NULL);
 
--- Add index for efficient broadcast queries
-CREATE INDEX idx_task_requests_broadcasts 
-ON task_requests (is_broadcast, expires_at) 
-WHERE is_broadcast = TRUE;
+-- Create index for efficient broadcast queries
+CREATE INDEX idx_tasks_broadcasts 
+ON tasks (status, expires_at) 
+WHERE status = 'broadcast';
 
-COMMENT ON COLUMN task_requests.is_broadcast IS 'Whether this request is a broadcast (open to anyone)';
-COMMENT ON COLUMN task_requests.broadcast_type IS 'Broadcast type: need_help or offer_help (only when is_broadcast=true)';
+COMMENT ON COLUMN tasks.broadcast_type IS 'Broadcast type: need_help or offer_help (only when status=broadcast)';
