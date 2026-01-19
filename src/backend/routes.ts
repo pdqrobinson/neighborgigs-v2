@@ -6,6 +6,7 @@ const api = new Hono();
 // Middleware: Auth check via X-User-Id header
 api.use('/api/v1/*', async (c, next) => {
   const userId = c.req.header('X-User-Id');
+  console.log('=== MIDDLEWARE HIT ===', { path: c.req.path, method: c.req.method, userId });
   if (!userId) {
     return c.json({ error: { code: 'UNAUTHORIZED', message: 'Missing X-User-Id header' } }, 401);
   }
@@ -28,6 +29,7 @@ function errorResponse(code: string, message: string, details?: any, status = 40
 // 1) Get Current User
 api.get('/api/v1/me', async (c) => {
   const userId = getUserId(c);
+  console.log('=== GET /api/v1/me HIT ===', { userId, headers: c.req.header() });
   const { data, error } = await db
     .from('users')
     .select(`
@@ -40,6 +42,7 @@ api.get('/api/v1/me', async (c) => {
     .single();
 
   if (error || !data) {
+    console.log('User NOT FOUND', { userId, error, data });
     return c.json(errorResponse('NOT_FOUND', 'User not found'), 404);
   }
 
@@ -57,6 +60,7 @@ api.get('/api/v1/me', async (c) => {
     }
   };
 
+  console.log('User FOUND', { userId, user });
   return c.json({ user });
 });
 
