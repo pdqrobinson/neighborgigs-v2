@@ -17,14 +17,24 @@ if (!PASSWORD) {
   console.error('');
   console.error('Get your password from:');
   console.error('  https://supabase.com/dashboard/project/kxpglaetbawiugqmihfj/settings/database');
-  console.error('  -> Copy the password from "Connection string" -> "Transaction mode"');
+  console.error('  -> Copy password from "Connection string" -> "Transaction mode"');
   process.exit(1);
 }
 
-const connectionString = `postgresql://postgres.kxpglaetbawiugqmihfj:${PASSWORD}@aws-1-us-east-1.pooler.supabase.com:6543/postgres`;
-
+// ✅ CORRECT: Direct DB host for DDL (migrations)
+// ❌ WRONG: aws-*.pooler.supabase.com (pooled connections fail for DDL)
 const client = new Client({
-  connectionString,
+  host: 'db.kxpglaetbawiugqmihfj.supabase.co',
+  port: 5432,
+  user: 'postgres',
+  password: PASSWORD,
+  database: 'postgres',
+  ssl: {
+    rejectUnauthorized: false,
+  },
+  statement_timeout: 0,
+  query_timeout: 0,
+  connectionTimeoutMillis: 10_000,
 });
 
 async function executeSQL(sql: string, context: string) {
@@ -48,8 +58,8 @@ async function applyMigration(filePath: string, name: string) {
   // Split SQL into individual statements (simple approach)
   const statements = sql
     .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--') && !s.startsWith('/*'));
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith('--') && !s.startsWith('/*'));
 
   console.log(`Found ${statements.length} SQL statements to execute...`);
 
@@ -87,7 +97,7 @@ async function applyMigration(filePath: string, name: string) {
 
 async function main() {
   console.log('=== NeighborGigs Phase One Database Migrations ===\n');
-  console.log(`Connecting to: postgres.kxpglaetbawiugqmihfj.supabase.com\n`);
+  console.log('Connecting to: db.kxpglaetbawiugqmihfj.supabase.co (direct host)\n');
 
   try {
     await client.connect();
@@ -105,9 +115,9 @@ async function main() {
 
     console.log('Demo users created:');
     console.log('  - Alex (Requester): 00000000-0000-0000-0000-000000000001');
-    console.log('  - Jamie (Helper):   00000000-0000-0000-0000-0000000000002');
-    console.log('  - Taylor (Helper):  00000000-0000-0000-0000-000000000003');
-    console.log('  - Jordan (Idle):    00000000-0000-0000-0000-000000000004');
+    console.log('  - Jamie (Helper):   00000000-0000-0000000000002');
+    console.log('  - Taylor (Helper): 00000000-0000-000000000003');
+    console.log('  - Jordan (Idle):    00000000-0000-000000000004');
     console.log('');
 
   } catch (error) {

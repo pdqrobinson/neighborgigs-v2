@@ -201,3 +201,44 @@ All users are in `demo_neighborhood` (Downtown Demo).
 - No future-proofing
 - No "easy to add later" logic
 - Reliability over cleverness
+
+## Implementation Progress
+
+**Last Updated: 2026-01-19**
+
+### Completed Features (5/13 priority tasks)
+
+✅ **Map View** - Interactive Leaflet map showing nearby helpers with pins and user radius circle
+✅ **Radius Validation** - Distance check in request creation ensures helper is within user's radius
+✅ **Movement Duration Selection** - Modal for selecting 30/60/90/120 minute availability windows
+✅ **Helper Name Display** - RequestHelp page fetches and shows actual helper name
+✅ **Router Navigation** - Fixed navigation to use useNavigate instead of window.history.back()
+
+### Pending Features (8/13 priority tasks)
+
+⏳ **Database Migrations** - Migration scripts ready, awaiting Supabase password
+  - Script: `./scripts/apply-migrations-with-password.sh YOUR_PASSWORD`
+  - Also: `bun run scripts/apply-migrations.ts` (requires SUPABASE_DB_PASSWORD env var)
+
+⏳ **Push Notifications** - Firebase/OneSignal integration for real-time alerts
+  - New incoming request notification for helpers
+  - Request status updates (accepted/declined/cancelled) for requesters
+
+⏳ **Real-time Updates** - Supabase Realtime or polling for live data
+  - Active task status updates
+  - New helpers appearing/disappearing on map
+  - Incoming request notifications
+
+⏳ **Background Jobs** - Cron/scheduled tasks for expiration
+  - Expire movement (set on_the_move to false when move_expires_at passes)
+  - Expire requests (set status to expired after 15 minutes)
+
+⏳ **Photo Upload** - Replace URL inputs with Supabase Storage file uploads
+  - Profile photo upload
+  - Task proof photo upload
+
+⏳ **Notifications Toggle** - Backend endpoint to update notifications_enabled flag
+
+⏳ **Type Consolidation** - Remove duplicate type definitions across db.ts and api-client.ts
+
+⏳ **Service Role Key Security** - Move from hardcoded values to zosite.json env vars

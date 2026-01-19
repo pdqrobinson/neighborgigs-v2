@@ -84,17 +84,23 @@ export default function MapView({ helpers, userLat, userLng, userRadiusMiles }: 
           position={[helper.last_location.lat, helper.last_location.lng]}
         >
           <Popup>
-            <div className="p-2">
-              <h3 className="font-semibold text-gray-900">{helper.first_name}</h3>
-              <p className="text-sm text-gray-600">
+            <div className="p-2 min-w-[200px]">
+              <h3 className="font-semibold text-gray-900 mb-2">{helper.first_name}</h3>
+              <p className="text-sm text-gray-600 mb-1">
                 {helper.direction === 'out' ? 'Going out' : 'Heading home'}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-1">
                 {helper.distance_miles.toFixed(1)} miles away
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 mb-3">
                 until {new Date(helper.expires_at).toLocaleTimeString()}
               </p>
+              <a
+                href={`/request/${helper.user_id}`}
+                className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded text-sm hover:bg-blue-700"
+              >
+                Request Help
+              </a>
             </div>
           </Popup>
         </Marker>
