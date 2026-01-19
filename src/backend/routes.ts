@@ -162,6 +162,30 @@ api.patch('/api/v1/me/radius', async (c) => {
   return c.json({ user: data });
 });
 
+// Update Notifications Toggle
+api.patch('/api/v1/me/notifications', async (c) => {
+  const userId = getUserId(c);
+  const body = await c.req.json();
+  const { notifications_enabled } = body;
+
+  if (typeof notifications_enabled !== 'boolean') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'notifications_enabled must be a boolean'), 400);
+  }
+
+  const { data, error } = await db
+    .from('users')
+    .update({ notifications_enabled })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to update notifications'), 500);
+  }
+
+  return c.json({ user: data });
+});
+
 // 4b) Update Neighborhood (automatic on first launch)
 api.post('/api/v1/me/neighborhood', async (c) => {
   const userId = getUserId(c);
@@ -633,15 +657,27 @@ api.get('/api/v1/wallet', async (c) => {
 
   const { data, error } = await db
     .from('wallets')
-    .select('id as wallet_id, available_usd, pending_usd, updated_at')
+    .select('id, available_usd, pending_usd, created_at')
     .eq('user_id', userId)
     .single();
 
-  if (error) {
-    return c.json(errorResponse('NOT_FOUND', 'Wallet not found'), 404);
+  if (error?.code === 'PGRST116') {
+    // wallet not found - return defaults
+    return c.json({ wallet: { available_usd: 0, pending_usd: 0 } });
   }
 
-  return c.json({ wallet: data });
+  if (error) {
+    console.error('Wallet query error:', error);
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch wallet'), 500);
+  }
+
+  const wallet = {
+    wallet_id: data.id,
+    available_usd: data.available_usd,
+    pending_usd: data.pending_usd,
+    updated_at: data.created_at,
+  };
+  return c.json({ wallet });
 });
 
 // 16) Get Ledger Entries
