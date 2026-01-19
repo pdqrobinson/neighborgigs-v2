@@ -206,19 +206,16 @@ All users are in `demo_neighborhood` (Downtown Demo).
 
 **Last Updated: 2026-01-19**
 
-### Completed Features (5/13 priority tasks)
+### Completed Features (6/13 priority tasks)
 
+✅ **Database Migrations** - All schema, RPC functions, and demo data applied successfully
 ✅ **Map View** - Interactive Leaflet map showing nearby helpers with pins and user radius circle
 ✅ **Radius Validation** - Distance check in request creation ensures helper is within user's radius
 ✅ **Movement Duration Selection** - Modal for selecting 30/60/90/120 minute availability windows
 ✅ **Helper Name Display** - RequestHelp page fetches and shows actual helper name
 ✅ **Router Navigation** - Fixed navigation to use useNavigate instead of window.history.back()
 
-### Pending Features (8/13 priority tasks)
-
-⏳ **Database Migrations** - Migration scripts ready, awaiting Supabase password
-  - Script: `./scripts/apply-migrations-with-password.sh YOUR_PASSWORD`
-  - Also: `bun run scripts/apply-migrations.ts` (requires SUPABASE_DB_PASSWORD env var)
+### Pending Features (7/13 priority tasks)
 
 ⏳ **Push Notifications** - Firebase/OneSignal integration for real-time alerts
   - New incoming request notification for helpers
