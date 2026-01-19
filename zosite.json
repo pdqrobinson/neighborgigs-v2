@@ -3,7 +3,9 @@
   "local_port": 50430,
   "entrypoint": "bun run dev",
   "env": {
-    "VITE_ZO_SITE_DEMO_VARIANT": "blank"
+    "VITE_ZO_SITE_DEMO_VARIANT": "blank",
+    "SUPABASE_URL": "",
+    "SUPABASE_SERVICE_ROLE_KEY": ""
   },
   "publish": {
     "label": "neighborgigs",
@@ -13,7 +15,9 @@
     "env": {
       "NODE_ENV": "production",
       "ZO_CLIENT_IDENTITY_TOKEN": "none",
-      "VITE_ZO_SITE_DEMO_VARIANT": "blank"
+      "VITE_ZO_SITE_DEMO_VARIANT": "blank",
+      "SUPABASE_URL": "",
+      "SUPABASE_SERVICE_ROLE_KEY": ""
     }
-  }
+  },
 }

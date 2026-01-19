@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import config from "./zosite.json";
 import { Hono } from "hono";
 import { getRecentRegistrations, createRegistration } from "./backend-lib/db";
+import apiRoutes from "./src/backend/routes";
 
 type Mode = "development" | "production";
 const app = new Hono();
@@ -33,6 +34,9 @@ app.post("/api/_zo/demo/register", async (c) => {
   const registration = createRegistration(name, email, company, notes);
   return c.json(registration, 201);
 });
+
+// Mount NeighborGigs Phase One API routes
+app.route("/", apiRoutes);
 
 if (mode === "production") {
   configureProduction(app);
