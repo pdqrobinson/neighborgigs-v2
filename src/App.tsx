@@ -9,13 +9,15 @@ import Wallet from './pages/Wallet';
 import RequestHelp from './pages/RequestHelp';
 import ActiveTask from './pages/ActiveTask';
 import LocationGate from './pages/LocationGate';
+import LandingPage from './pages/LandingPage';
 
 export default function App() {
   return (
     <UserProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<LocationGate />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/location-gate" element={<LocationGate />} />
           <Route path="/home" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/wallet" element={<Wallet />} />
