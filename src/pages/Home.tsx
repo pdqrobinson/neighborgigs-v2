@@ -47,7 +47,8 @@ export default function Home() {
   };
 
   const handleRespond = (broadcast: Broadcast) => {
-    navigate(`/broadcasts/${broadcast.id}/respond`);
+    // Navigate to a response page - for now, just show alert
+    alert(`Response UI coming soon for broadcast: ${broadcast.description}`);
   };
 
   if (loading) {
@@ -182,7 +183,7 @@ export default function Home() {
                           </span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-900">{broadcast.message}</p>
+                      <p className="text-sm text-gray-900">{broadcast.description}</p>
                       <div className="text-xs text-gray-500 mt-1">
                         expires {new Date(broadcast.expires_at).toLocaleTimeString()}
                       </div>
