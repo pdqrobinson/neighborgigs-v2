@@ -63,37 +63,37 @@ export default function RequestHelp() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
+    <div className="min-h-screen bg-background pb-8">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-lg mx-auto px-4 py-3">
+      <div className="bg-card shadow-sm border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-4">
           <button
             onClick={() => navigate('/home')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← Cancel
           </button>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">
           Request Help
         </h1>
-        <p className="text-gray-600 mb-6">
+        <p className="text-muted-foreground mb-8">
           Send a request to {loadingHelper ? 'Loading...' : helper?.first_name || 'a helper'}
         </p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6 space-y-8">
           {/* Message */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-3">
               What do you need help with?
             </label>
             <textarea
@@ -102,28 +102,28 @@ export default function RequestHelp() {
               maxLength={280}
               rows={4}
               placeholder="Describe your request..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full border border-input rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-2">
               {message.length}/280 characters
             </p>
           </div>
 
           {/* Tip Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-foreground mb-4">
               Suggested Tip
             </label>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-4">
               {TIP_PRESETS.map((tip) => (
                 <button
                   key={tip}
                   onClick={() => setSelectedTip(tip)}
                   type="button"
-                  className={`py-3 px-4 rounded-lg font-medium border-2 transition ${
+                  className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
                     selectedTip === tip
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-900 border-gray-300 hover:border-blue-300'
+                      : 'bg-card text-foreground border-border hover:border-blue-400'
                   }`}
                 >
                   ${tip}
@@ -136,7 +136,7 @@ export default function RequestHelp() {
           <button
             onClick={handleSubmit}
             disabled={sending || !message.trim() || !selectedTip}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {sending ? 'Sending Request...' : 'Send Request'}
           </button>

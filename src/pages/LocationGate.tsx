@@ -50,38 +50,38 @@ export default function LocationGate() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-gray-600">Loading...</div>
+          <div className="text-muted-foreground">Loading...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="max-w-md w-full bg-card rounded-lg shadow-md p-8 text-center">
+        <h1 className="text-2xl font-bold text-foreground mb-4">
           NeighborGigs
         </h1>
-        <p className="text-gray-600 mb-6">
+        <p className="text-muted-foreground mb-8">
           Location permission is required to see nearby neighbors and request help.
         </p>
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
             {error}
           </div>
         )}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <button
             onClick={requestLocation}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
             Enable Location
           </button>
           <button
             onClick={useDemoMode}
-            className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition"
+            className="w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-lg font-medium hover:bg-secondary/80 transition-colors"
           >
             Demo Mode
           </button>

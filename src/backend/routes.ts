@@ -878,60 +878,43 @@ api.post('/api/v1/tasks/:taskId/complete', async (c) => {
 
 // === WALLET ENDPOINTS ===
 
-// 15) Get Wallet
+// 15) Get Wallet (uses canonical RPC function for derived balances)
 api.get('/api/v1/wallet', async (c) => {
   const userId = getUserId(c);
 
-  const { data, error } = await db
-    .from('wallets')
-    .select('id, available_usd, pending_usd, created_at')
-    .eq('user_id', userId)
-    .single();
-
-  if (error?.code === 'PGRST116') {
-    // wallet not found - return defaults
-    return c.json({ wallet: { available_usd: 0, pending_usd: 0 } });
-  }
+  // Use RPC for derived balances from ledger
+  const { data, error } = await db.rpc('get_wallet', { p_user_id: userId });
 
   if (error) {
-    console.error('Wallet query error:', error);
+    console.error('Wallet RPC error:', error);
+    if (error.code === 'PGRST116') {
+      // RPC not found - return defaults
+      return c.json({ wallet: { available_usd: 0, pending_usd: 0, ledger_usd: 0, held_usd: 0 } });
+    }
     return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch wallet'), 500);
   }
 
-  const wallet = {
-    wallet_id: data.id,
-    available_usd: data.available_usd,
-    pending_usd: data.pending_usd,
-    updated_at: data.created_at,
-  };
-  return c.json({ wallet });
+  return c.json({ wallet: data });
 });
 
-// 16) Get Ledger Entries
+// 16) Get Ledger Transactions (renamed from ledger_entries to wallet_transactions)
 api.get('/api/v1/wallet/ledger', async (c) => {
   const userId = getUserId(c);
   const limit = parseInt(c.req.query('limit') || '50');
   const cursor = c.req.query('cursor') || null;
 
-  let query = db
-    .from('ledger_entries')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (cursor) {
-    query = query.gt('created_at', cursor);
-  }
-
-  const { data, error } = await query;
+  // Use canonical RPC for transaction history
+  const { data, error } = await db.rpc('get_wallet_transactions', {
+    p_user_id: userId,
+    p_limit: limit
+  });
 
   if (error) {
+    console.error('Ledger RPC error:', error);
     return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch ledger'), 500);
   }
 
-  const nextCursor = (data && data.length >= limit) ? data[data.length - 1].created_at : null;
-
-  return c.json({ entries: data || [], next_cursor: nextCursor });
+  return c.json({ entries: data || [], next_cursor: null });
 });
 
 // 17) Request Withdrawal (synchronous with idempotency)

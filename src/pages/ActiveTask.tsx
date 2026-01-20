@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../contexts/UserContext';
 import { api, type Task, type TaskRequest } from '../lib/api-client';
 
 type ActiveTaskData = {
@@ -15,6 +16,7 @@ export default function ActiveTask() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proofPhotoUrl, setProofPhotoUrl] = useState('');
+  const { user } = useUser();
 
   const loadActiveTask = async () => {
     try {
@@ -122,46 +124,46 @@ export default function ActiveTask() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
+    <div className="min-h-screen bg-background pb-8">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-lg mx-auto px-4 py-3">
+      <div className="bg-card shadow-sm border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-4">
           <button
             onClick={() => navigate('/home')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← Home
           </button>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div className="max-w-lg mx-auto px-4 py-8">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
             {error}
           </div>
         )}
 
         {/* Pending Request (Requester) */}
         {data.pending_request_id && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <div className="text-4xl mb-3">⏳</div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
+            <div className="text-4xl mb-4">⏳</div>
+            <h2 className="text-xl font-bold text-foreground mb-3">
               Waiting for helper to accept
             </h2>
-            <p className="text-gray-600 mb-6">
-              Your request was sent and the helper has been notified.
+            <p className="text-muted-foreground mb-8">
+              Your request was sent and helper has been notified.
             </p>
             <button
               onClick={handleCancelRequest}
               disabled={actionLoading}
-              className="bg-red-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
+              className="bg-destructive text-white py-2.5 px-4 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
             >
               {actionLoading ? 'Cancelling...' : 'Cancel Request'}
             </button>
@@ -170,17 +172,31 @@ export default function ActiveTask() {
 
         {/* Active Task */}
         {data.task && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+            {/* On The Move Status Banner */}
+            {(data.task.status === 'accepted' || data.task.status === 'in_progress') && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-900">
+                  <span className="text-xl">🚶</span>
+                  {data.task.helper_id === user?.id ? (
+                    <span className="font-medium">You are on the move</span>
+                  ) : (
+                    <span className="font-medium">Your neighbor is on the move</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <h2 className="text-xl font-bold text-foreground mb-6">
               {data.task.status === 'accepted' && 'Task Accepted'}
               {data.task.status === 'in_progress' && 'Task in Progress'}
               {data.task.status === 'completed' && 'Task Complete'}
             </h2>
 
             {data.task.description && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Task</h3>
-                <p className="text-gray-900">{data.task.description}</p>
+              <div className="mb-8 p-4 bg-muted rounded-lg">
+                <h3 className="text-sm font-medium text-foreground mb-2">Task</h3>
+                <p className="text-foreground">{data.task.description}</p>
               </div>
             )}
 
@@ -188,7 +204,7 @@ export default function ActiveTask() {
               <button
                 onClick={handleStartTask}
                 disabled={actionLoading}
-                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
+                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
                 {actionLoading ? 'Starting...' : 'Start Task'}
               </button>
@@ -196,8 +212,8 @@ export default function ActiveTask() {
 
             {data.task.status === 'in_progress' && (
               <>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="mb-8">
+                  <label className="block text-sm font-medium text-foreground mb-3">
                     Proof Photo (Optional)
                   </label>
                   <input
@@ -205,13 +221,13 @@ export default function ActiveTask() {
                     value={proofPhotoUrl}
                     onChange={(e) => setProofPhotoUrl(e.target.value)}
                     placeholder="https://example.com/proof.jpg"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <button
                   onClick={handleCompleteTask}
                   disabled={actionLoading}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {actionLoading ? 'Completing...' : 'Mark Complete'}
                 </button>
@@ -220,16 +236,16 @@ export default function ActiveTask() {
 
             {data.task.status === 'completed' && (
               <div className="text-center">
-                <div className="text-4xl mb-3">✅</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <div className="text-4xl mb-4">✅</div>
+                <h3 className="text-xl font-bold text-foreground mb-3">
                   Task Completed!
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-8">
                   You earned ${data.task.tip_amount_usd?.toFixed(2) || '0.00'} USD
                 </p>
                 <button
                   onClick={() => navigate('/wallet')}
-                  className="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700"
+                  className="bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
                   View Wallet
                 </button>
@@ -237,7 +253,7 @@ export default function ActiveTask() {
             )}
 
             {data.task.completed_at && (
-              <p className="text-sm text-gray-500 mt-4 text-center">
+              <p className="text-sm text-muted-foreground mt-6 text-center">
                 Completed at {new Date(data.task.completed_at).toLocaleString()}
               </p>
             )}
@@ -246,32 +262,32 @@ export default function ActiveTask() {
 
         {/* Incoming Requests (Helper) */}
         {incomingRequests.length > 0 && !data.task && (
-          <div className="mt-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
+          <div className="mt-8">
+            <h2 className="text-lg font-bold text-foreground mb-6">
               Incoming Requests
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {incomingRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+                  className="bg-card rounded-lg shadow-sm border border-border p-6"
                 >
-                  <p className="text-gray-900 mb-4">{request.message}</p>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-foreground mb-4">{request.message}</p>
+                  <p className="text-sm text-muted-foreground mb-6">
                     Suggested tip: ${request.suggested_tip_usd.toFixed(2)}
                   </p>
-                  <div className="flex gap-3">
+                  <div className="flex gap-4">
                     <button
                       onClick={() => handleAcceptRequest(request.id)}
                       disabled={actionLoading}
-                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
+                      className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
                     >
                       Accept
                     </button>
                     <button
                       onClick={() => handleDeclineRequest(request.id)}
                       disabled={actionLoading}
-                      className="flex-1 bg-gray-200 text-gray-900 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 disabled:opacity-50"
+                      className="flex-1 bg-secondary text-secondary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
                     >
                       Decline
                     </button>
@@ -284,17 +300,17 @@ export default function ActiveTask() {
 
         {/* Empty State */}
         {!data.task && !data.pending_request_id && incomingRequests.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-2">📭</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="text-center py-16">
+            <div className="text-4xl mb-4">📭</div>
+            <h2 className="text-xl font-semibold text-foreground mb-3">
               No active task
             </h2>
-            <p className="text-gray-600 mb-6">
-              Request help or wait for incoming requests.
+            <p className="text-muted-foreground mb-8">
+              Create a broadcast or wait for incoming requests.
             </p>
             <button
               onClick={() => navigate('/home')}
-              className="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700"
+              className="bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Go to Home
             </button>

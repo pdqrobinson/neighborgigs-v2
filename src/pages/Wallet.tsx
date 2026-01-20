@@ -59,34 +59,34 @@ export default function Wallet() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
+    <div className="min-h-screen bg-background pb-8">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-lg mx-auto px-4 py-3">
+      <div className="bg-card shadow-sm border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-4">
           <button
             onClick={() => navigate('/home')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← Back
           </button>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Wallet</h1>
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-foreground mb-8">Wallet</h1>
 
         {message && (
           <div
-            className={`mb-4 p-3 rounded ${
+            className={`mb-6 p-4 rounded-lg ${
               message.type === 'success'
                 ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-red-50 border border-red-200 text-red-700'
+                : 'bg-destructive/10 border border-destructive/20 text-destructive'
             }`}
           >
             {message.text}
@@ -94,21 +94,21 @@ export default function Wallet() {
         )}
 
         {/* Balance Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-sm font-medium text-gray-600 mb-2">Available Balance</h2>
-          <div className="text-4xl font-bold text-gray-900 mb-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-8 mb-8">
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Available Balance</h2>
+          <div className="text-4xl font-bold text-foreground mb-4">
             ${(wallet?.available_usd || 0).toFixed(2)}
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             Pending: ${(wallet?.pending_usd || 0).toFixed(2)} USD
           </div>
         </div>
 
         {/* Withdrawal Form */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Request Withdrawal</h2>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-8">
+          <h2 className="text-lg font-semibold text-foreground mb-6">Request Withdrawal</h2>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-foreground mb-3">
               Amount (USD)
             </label>
             <input
@@ -119,42 +119,42 @@ export default function Wallet() {
               step="0.01"
               max={wallet?.available_usd || 0}
               placeholder="25.00"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-2">
               Available: ${(wallet?.available_usd || 0).toFixed(2)} USD
             </p>
           </div>
           <button
             onClick={handleWithdraw}
             disabled={withdrawing || !withdrawAmount}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {withdrawing ? 'Processing...' : 'Withdraw'}
           </button>
         </div>
 
         {/* Ledger History */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Transaction History</h2>
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-6">Transaction History</h2>
           {loadingEntries ? (
-            <div className="text-center py-4 text-gray-600">Loading...</div>
+            <div className="text-center py-6 text-muted-foreground">Loading...</div>
           ) : entries.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">
+            <div className="text-center py-12 text-muted-foreground">
               No transactions yet
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex justify-between items-start border-b border-gray-100 pb-3 last:border-b-0"
+                  className="flex justify-between items-start border-b border-border pb-4 last:border-b-0 last:pb-0"
                 >
                   <div>
-                    <p className="font-medium text-gray-900 capitalize">
+                    <p className="font-medium text-foreground capitalize">
                       {entry.source}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {new Date(entry.created_at).toLocaleString()}
                     </p>
                   </div>

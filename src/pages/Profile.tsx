@@ -38,44 +38,44 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
+    <div className="min-h-screen bg-background pb-8">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-lg mx-auto px-4 py-3">
+      <div className="bg-card shadow-sm border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-4">
           <button
             onClick={() => navigate(-1)}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← Back
           </button>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile</h1>
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-foreground mb-8">Profile</h1>
 
         {message && (
           <div
-            className={`mb-4 p-3 rounded ${
+            className={`mb-6 p-4 rounded-lg ${
               message.type === 'success'
                 ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-red-50 border border-red-200 text-red-700'
+                : 'bg-destructive/10 border border-destructive/20 text-destructive'
             }`}
           >
             {message.text}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           {/* Profile Photo */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-foreground mb-3">
               Profile Photo
             </label>
             {editing ? (
@@ -84,10 +84,10 @@ export default function Profile() {
                 value={photoUrl}
                 onChange={(e) => setPhotoUrl(e.target.value)}
                 placeholder="https://example.com/photo.jpg"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             ) : (
-              <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center overflow-hidden">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -95,7 +95,7 @@ export default function Profile() {
                     className="w-24 h-24 object-cover"
                   />
                 ) : (
-                  <span className="text-3xl text-gray-600">
+                  <span className="text-3xl text-muted-foreground">
                     {firstName[0]?.toUpperCase() || '?'}
                   </span>
                 )}
@@ -104,8 +104,8 @@ export default function Profile() {
           </div>
 
           {/* First Name */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-foreground mb-3">
               First Name
             </label>
             {editing ? (
@@ -114,26 +114,26 @@ export default function Profile() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 maxLength={40}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             ) : (
-              <p className="text-gray-900 text-lg">{firstName}</p>
+              <p className="text-foreground text-lg">{firstName}</p>
             )}
           </div>
 
           {/* Read-only Info */}
-          <div className="border-t border-gray-200 pt-6 space-y-3">
+          <div className="border-t border-border pt-8 space-y-4">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Neighborhood</span>
-              <span className="text-gray-900 font-medium">{user?.neighborhood?.name || 'Loading...'}</span>
+              <span className="text-muted-foreground">Neighborhood</span>
+              <span className="text-foreground font-medium">{user?.neighborhood?.name || 'Loading...'}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Radius</span>
-              <span className="text-gray-900 font-medium">{user?.radius_miles} mile{user?.radius_miles !== 1 ? 's' : ''}</span>
+              <span className="text-muted-foreground">Radius</span>
+              <span className="text-foreground font-medium">{user?.radius_miles} mile{user?.radius_miles !== 1 ? 's' : ''}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Notifications</span>
-              <span className="text-gray-900 font-medium">
+              <span className="text-muted-foreground">Notifications</span>
+              <span className="text-foreground font-medium">
                 {user?.notifications_enabled ? 'Enabled' : 'Disabled'}
               </span>
             </div>
@@ -141,18 +141,18 @@ export default function Profile() {
 
           {/* Actions */}
           {editing ? (
-            <div className="mt-6 flex gap-3">
+            <div className="mt-8 flex gap-4">
               <button
                 onClick={handleCancel}
                 disabled={saving}
-                className="flex-1 bg-gray-200 text-gray-900 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 disabled:opacity-50"
+                className="flex-1 bg-secondary text-secondary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !firstName.trim()}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
@@ -160,7 +160,7 @@ export default function Profile() {
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="mt-6 w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700"
+              className="mt-8 w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Edit Profile
             </button>

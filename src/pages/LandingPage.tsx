@@ -59,32 +59,32 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-green-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-background to-green-50" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-8">
               Help Your Neighbors.<br />
-              <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                 Earn Together.
               </span>
             </h1>
-            <p className="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl sm:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto">
               The hyperlocal broadcast app that lets neighbors help each other with immediate errands. 
               Need help? Broadcast it. Available to help? Let your neighborhood know.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => navigate('/location-gate')}
-                className="bg-blue-600 text-white py-4 px-8 rounded-xl font-semibold text-lg hover:bg-blue-700 transition shadow-lg hover:shadow-xl"
+                className="bg-blue-600 text-white py-4 px-8 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-shadow shadow-md hover:shadow-lg"
               >
                 Start Broadcasting
               </button>
               <button
                 onClick={() => navigate('/location-gate')}
-                className="bg-white text-gray-900 py-4 px-8 rounded-xl font-semibold text-lg border-2 border-gray-300 hover:border-blue-400 transition"
+                className="bg-background text-foreground py-4 px-8 rounded-lg font-semibold text-lg border-2 border-border hover:border-blue-400 transition-colors"
               >
                 See What's Nearby
               </button>
@@ -94,28 +94,28 @@ export default function LandingPage() {
       </div>
 
       {/* Broadcast Examples */}
-      <div className="bg-gray-50 py-16 sm:py-24">
+      <div className="bg-muted/50 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               How It Works
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Real examples of neighbors helping neighbors
             </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-8">
             {BROADCAST_EXAMPLES.map((example, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition"
+                className="bg-card rounded-lg shadow-sm border border-border p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
                   <div className="text-4xl flex-shrink-0">{example.icon}</div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-3">
                       <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
                           example.type === 'need_help'
                             ? 'bg-red-100 text-red-700'
                             : 'bg-green-100 text-green-700'
@@ -124,8 +124,8 @@ export default function LandingPage() {
                         {example.type === 'need_help' ? 'Need Help' : 'Offering Help'}
                       </span>
                     </div>
-                    <p className="text-gray-900 font-medium mb-2">{example.message}</p>
-                    <div className="flex items-center justify-between text-sm text-gray-500">
+                    <p className="text-foreground font-medium mb-3">{example.message}</p>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>{example.author}</span>
                       <span className="text-green-600 font-medium">
                         ✓ {example.responseTime} response time
@@ -140,13 +140,13 @@ export default function LandingPage() {
       </div>
 
       {/* Features */}
-      <div className="py-16 sm:py-24">
+      <div className="py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               Why NeighborGigs?
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Built for real neighborhoods, real connections, real help
             </p>
           </div>
@@ -154,10 +154,10 @@ export default function LandingPage() {
             {FEATURES.map((feature, index) => (
               <div key={index} className="text-center">
                 <div className="text-5xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <p className="text-muted-foreground">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -165,17 +165,17 @@ export default function LandingPage() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-green-600 py-16 sm:py-24">
+      <div className="bg-gradient-to-r from-blue-600 to-green-600 py-20 sm:py-28">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Ready to Help or Get Help?
           </h2>
-          <p className="text-xl text-blue-50 mb-8">
+          <p className="text-xl text-blue-50 mb-10">
             Join your neighborhood and start connecting with neighbors in minutes.
           </p>
           <button
             onClick={() => navigate('/location-gate')}
-            className="bg-white text-blue-600 py-4 px-8 rounded-xl font-semibold text-lg hover:bg-gray-100 transition shadow-lg"
+            className="bg-white text-blue-600 py-4 px-8 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-md hover:shadow-lg"
           >
             Get Started Now
           </button>

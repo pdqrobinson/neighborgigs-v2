@@ -19,6 +19,50 @@ NeighborGigs Phase One delivers a fully functional core loop:
 - **Empty states are honest**: No fake pins or synthetic activity
 - **Ledger-first money model**: All value changes are recorded in a ledger before any funds move
 - **Custodial wallet (USD only)**: Users do not manage keys; transfers are controlled and reversible
+- **Wallet balance is derived exclusively from completed ledger transactions; no balance value is ever authoritative on its own.**
+
+### Canonical Wallet Model
+
+The wallet is **not** a number — it's the sum of transactions. Balance is derived, never authoritative.
+
+#### wallet_transactions Table (Ledger)
+
+Every movement of money is one row in the `wallet_transactions` table:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | User who owns this transaction |
+| wallet_id | uuid | Reference to wallet (for cascade delete) |
+| amount_usd | numeric | Positive or negative amount |
+| type | enum | `credit` (money in), `debit` (money out), `hold` (reserved), `release` (release from hold) |
+| status | enum | `pending`, `completed`, `failed` |
+| source | text | Origin of transaction (`task`, `withdrawal`, `demo_seed`, etc.) |
+| reference_id | uuid (nullable) | Related entity (task_id, withdrawal_id, etc.) |
+| created_at | timestamp | When transaction was recorded |
+
+#### Balance Definitions
+
+**Ledger Balance (Authoritative)**: "How much money does this user have, period?"
+
+```sql
+sum(amount_usd) where status = 'completed'
+```
+
+**Available Balance**: "How much can they spend or withdraw right now?"
+
+```
+ledger_balance - active_holds
+```
+
+Where `active_holds` = `sum(amount_usd)` where `type = 'hold'` and `status = 'pending'`.
+
+#### Key Rules
+
+1. Never display a stored balance column. The UI calls `get_wallet()` or `get_available_balance_cents()` which derive from the ledger.
+2. Demo seeds must insert transactions with `status = 'completed'` to be visible.
+3. Task completions create `status = 'completed'` credit transactions immediately.
+4. Withdrawals create `status = 'completed'` debit transactions immediately.
 
 ## Architecture
 
@@ -43,8 +87,10 @@ NeighborGigs Phase One delivers a fully functional core loop:
 ├── db/                     # Database migrations and seed data
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql
-│   │   └── 002_rpc_functions.sql
-│   └── seed_demo_data.sql
+│   │   ├── 002_rpc_functions.sql
+│   │   └── 003_wallet_canonical_model.sql
+│   ├── seed_demo_data.sql
+│   └── seed_demo_canonical.sql
 ├── src/
 │   ├── main.tsx           # React entry point
 │   ├── App.tsx            # Router setup
@@ -71,12 +117,21 @@ NeighborGigs Phase One delivers a fully functional core loop:
 Phase One uses exactly eight tables:
 
 1. **neighborhoods**: Defines hard boundary for visibility
-2. **users**: All people in the system (demo or real)
+2. **users**: All people in system (demo or real)
 3. **user_devices**: Push notification tokens for users
-4. **wallets**: One wallet per user with derived balances
-5. **ledger_entries**: Every money movement (append-only)
+4. **wallets**: One wallet per user (balances are derived from wallet_transactions)
+5. **wallet_transactions**: Every money movement with type and status (the authoritative ledger)
 6. **tasks**: Agreed work after request acceptance
 7. **task_requests**: Proposals from requester to helper
+8. **withdrawal_requests**: Idempotent withdrawal tracking
+
+### Wallet-Related RPC Functions
+
+- `get_ledger_balance_cents(user_id)` - Sum of completed transactions (authoritative)
+- `get_available_balance_cents(user_id)` - Ledger balance minus held funds
+- `get_held_balance_cents(user_id)` - Currently held/reserved funds
+- `get_wallet(user_id)` - Wallet with all derived balances
+- `get_wallet_transactions(user_id, limit)` - Transaction history
 
 ## API Endpoints
 
@@ -164,14 +219,16 @@ Authentication: `X-User-Id` header (demo mode uses fixed UUID)
 
 2. **Run database migrations**:
    ```bash
-   # Apply schema
+   # Apply schema in order
    psql -h <SUPABASE_HOST> -U <SUPABASE_USER> -f db/migrations/001_initial_schema.sql
    psql -h <SUPABASE_HOST> -U <SUPABASE_USER> -f db/migrations/002_rpc_functions.sql
+   psql -h <SUPABASE_HOST> -U <SUPABASE_USER> -f db/migrations/003_wallet_canonical_model.sql
    ```
 
 3. **Seed demo data** (optional for development):
    ```bash
-   psql -h <SUPABASE_HOST> -U <SUPABASE_USER> -f db/seed_demo_data.sql
+   # Use canonical seed data with completed transactions
+   psql -h <SUPABASE_HOST> -U <SUPABASE_USER> -f db/seed_demo_canonical.sql
    ```
 
 4. **Run development**:
