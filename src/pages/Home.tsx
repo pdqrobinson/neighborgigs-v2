@@ -5,6 +5,7 @@ import { api, type Broadcast } from '../lib/api-client';
 import MapView from '../components/MapView';
 
 const BROADCAST_DURATION_OPTIONS = [15, 30, 60, 120] as const;
+const OFFER_PRESETS = [5, 10, 15, 20, 25, 30] as const;
 
 export default function Home() {
   const navigate = useNavigate();
@@ -16,9 +17,18 @@ export default function Home() {
   const [broadcastType, setBroadcastType] = useState<'need_help' | 'offer_help'>('need_help');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedDuration, setSelectedDuration] = useState<number>(60);
+  const [selectedOffer, setSelectedOffer] = useState<number>(15);
+  const [customOffer, setCustomOffer] = useState<string>('');
   const [locationContext, setLocationContext] = useState<'here_now' | 'heading_to' | 'coming_from' | 'place_specific'>('here_now');
   const [placeName, setPlaceName] = useState('');
   const [placeAddress, setPlaceAddress] = useState('');
+  const [isSubmittingBroadcast, setIsSubmittingBroadcast] = useState(false);
+
+  // Response modal state
+  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [selectedBroadcast, setSelectedBroadcast] = useState<Broadcast | null>(null);
+  const [selectedTip, setSelectedTip] = useState<number>(10);
+  const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
 
   const loadBroadcasts = async () => {
     setLoadingBroadcasts(true);
@@ -42,34 +52,61 @@ export default function Home() {
   }, [user]);
 
   const createBroadcast = async () => {
+    const offerAmount = customOffer ? parseInt(customOffer) : selectedOffer;
+    const lat = user?.last_location?.lat || 0;
+    const lng = user?.last_location?.lng || 0;
+    
+    setIsSubmittingBroadcast(true);
+
     try {
-      await api.createBroadcast(
+      const result = await api.createBroadcast(
         broadcastType,
         broadcastMessage,
         selectedDuration,
-        locationContext,
-        placeName || null,
-        placeAddress || null
+        {
+          lat,
+          lng,
+          location_context: locationContext,
+          place_name: placeName || undefined,
+          place_address: placeAddress || undefined
+        },
+        offerAmount
       );
+      
       await loadBroadcasts();
       setShowBroadcastModal(false);
       setBroadcastMessage('');
+      setSelectedOffer(15);
+      setCustomOffer('');
       setLocationContext('here_now');
       setPlaceName('');
       setPlaceAddress('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create broadcast:', error);
-      alert('Failed to create broadcast');
+      const errorMessage = error?.message || 'Failed to create broadcast';
+      
+      if (errorMessage.includes('Duplicate') || errorMessage.includes('DUPLICATE')) {
+        alert('You already posted this broadcast recently. Please wait before posting again.');
+      } else {
+        alert(errorMessage);
+      }
+    } finally {
+      setIsSubmittingBroadcast(false);
     }
   };
 
   const handleRespond = (broadcast: Broadcast) => {
-    // Navigate to a response page - for now, just show alert
-    alert(`Response UI coming soon for broadcast: ${broadcast.message}`);
+    if (isOwnBroadcast(broadcast)) {
+      setShowBroadcastModal(true);
+    } else {
+      setSelectedBroadcast(broadcast);
+      setSelectedTip(10);
+      setShowResponseModal(true);
+    }
   };
 
   const handleDelete = async (broadcastId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering click on broadcast card
+    e.stopPropagation();
     try {
       await api.deleteBroadcast(broadcastId);
       await loadBroadcasts();
@@ -81,6 +118,24 @@ export default function Home() {
 
   const isOwnBroadcast = (broadcast: Broadcast) => {
     return broadcast.requester_id === user?.id;
+  };
+
+  const handleSubmitResponse = async () => {
+    if (!selectedBroadcast) return;
+    
+    setIsSubmittingResponse(true);
+    
+    try {
+      await api.respondToBroadcast(selectedBroadcast.id);
+      setShowResponseModal(false);
+      setSelectedBroadcast(null);
+      navigate('/task');
+    } catch (error: any) {
+      console.error('Failed to respond to broadcast:', error);
+      alert(error?.message || 'Failed to respond to broadcast');
+    } finally {
+      setIsSubmittingResponse(false);
+    }
   };
 
   if (loading) {
@@ -264,10 +319,10 @@ export default function Home() {
             <div className="text-center py-16 text-muted-foreground">
               <div className="text-4xl mb-4">🗺️</div>
               <h2 className="text-xl font-semibold text-foreground mb-3">
-                No broadcasts on the map
+                No broadcasts on map
               </h2>
               <p className="text-muted-foreground">
-                Start a broadcast to see it on the map!
+                Start a broadcast to see it on map!
               </p>
             </div>
           ) : (
@@ -428,6 +483,29 @@ export default function Home() {
                 ))}
               </div>
             </div>
+            {/* Task Details (neutralized for Phase 1) */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-4">
+                Task Details
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOffer(15);
+                  setCustomOffer('');
+                }}
+                className={`w-full py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
+                  selectedOffer > 0 && !customOffer
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-foreground border-border hover:border-primary/50'
+                }`}
+              >
+                Ready to help
+              </button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Indicate your availability for this task.
+              </p>
+            </div>
             <div className="flex gap-4">
               <button
                 onClick={() => {
@@ -442,10 +520,87 @@ export default function Home() {
               </button>
               <button
                 onClick={createBroadcast}
-                disabled={!broadcastMessage.trim()}
+                disabled={!broadcastMessage.trim() || isSubmittingBroadcast}
                 className="flex-1 bg-primary text-primary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                Broadcast
+                {isSubmittingBroadcast ? 'Broadcasting...' : 'Broadcast'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Response Modal */}
+      {showResponseModal && selectedBroadcast && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h2 className="text-xl font-bold text-foreground mb-4">
+              Respond to Broadcast
+            </h2>
+            <div className="mb-6 p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground">
+                  {selectedBroadcast.requester?.profile_photo ? (
+                    <img
+                      src={selectedBroadcast.requester.profile_photo}
+                      alt={selectedBroadcast.requester.first_name || '?'}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg">
+                      {selectedBroadcast.requester?.first_name?.[0] || '?'}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">
+                    {selectedBroadcast.requester?.first_name || 'Neighbor'}
+                  </h3>
+                  <span
+                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                      selectedBroadcast.broadcast_type === 'need_help'
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-green-600/10 text-green-700'
+                    }`}
+                  >
+                    {selectedBroadcast.broadcast_type === 'need_help' ? 'Need Help' : 'Offering Help'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-foreground">{selectedBroadcast.message}</p>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-foreground mb-3">
+                Your Response
+              </label>
+              <button
+                onClick={() => setSelectedTip(10)}
+                type="button"
+                className={`w-full py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
+                  selectedTip > 0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-foreground border-border hover:border-primary/50'
+                }`}
+              >
+                I can help with this task
+              </button>
+            </div>
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowResponseModal(false);
+                  setSelectedBroadcast(null);
+                }}
+                className="flex-1 bg-secondary text-secondary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-secondary/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitResponse}
+                disabled={isSubmittingResponse}
+                className="flex-1 bg-primary text-primary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {isSubmittingResponse ? 'Responding...' : 'Send Response'}
               </button>
             </div>
           </div>

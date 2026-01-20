@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useUser } from '../contexts/UserContext';
 import { api } from '../lib/api-client';
-
-const TIP_PRESETS = [5, 10, 15, 20] as const;
 
 export default function RequestHelp() {
   const { helperId } = useParams<{ helperId: string }>();
   const navigate = useNavigate();
+  const { user } = useUser();
   const [message, setMessage] = useState('');
-  const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [helper, setHelper] = useState<{ first_name: string; profile_photo: string | null } | null>(null);
@@ -40,20 +39,19 @@ export default function RequestHelp() {
   }, [helperId, navigate]);
 
   const handleSubmit = async () => {
-    if (!helperId || !message.trim() || !selectedTip) {
-      setError('Please fill in all fields');
+    if (!helperId || !message.trim()) {
+      setError('Please enter a message');
       return;
     }
-
+    
     setSending(true);
     setError(null);
 
     try {
-      await api.createRequest({
-        helper_id: helperId,
-        message: message.trim(),
-        suggested_tip_usd: selectedTip,
-      });
+      await api.createRequest(
+        helperId,
+        message.trim()
+      );
       navigate('/task');
     } catch (error: any) {
       setError(error?.message || 'Failed to send request');
@@ -109,33 +107,10 @@ export default function RequestHelp() {
             </p>
           </div>
 
-          {/* Tip Selection */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-4">
-              Suggested Tip
-            </label>
-            <div className="grid grid-cols-4 gap-3">
-              {TIP_PRESETS.map((tip) => (
-                <button
-                  key={tip}
-                  onClick={() => setSelectedTip(tip)}
-                  type="button"
-                  className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
-                    selectedTip === tip
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card text-foreground border-border hover:border-primary/50'
-                  }`}
-                >
-                  ${tip}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={sending || !message.trim() || !selectedTip}
+            disabled={sending || !message.trim()}
             className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {sending ? 'Sending Request...' : 'Send Request'}

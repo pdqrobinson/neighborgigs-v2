@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { api, type Task, type TaskRequest } from '../lib/api-client';
+import { api, type Task, type TaskRequest, type Broadcast } from '../lib/api-client';
 
 type ActiveTaskData = {
   task: Task | null;
@@ -18,10 +18,18 @@ export default function ActiveTask() {
   const [proofPhotoUrl, setProofPhotoUrl] = useState('');
   const { user } = useUser();
 
+  const [activeBroadcastId, setActiveBroadcastId] = useState<string | null>(null);
+  const [broadcastResponses, setBroadcastResponses] = useState<TaskRequest[]>([]);
+  const [loadingResponses, setLoadingResponses] = useState(false);
+
   const loadActiveTask = async () => {
     try {
       const active = await api.getActiveTask();
       setData(active);
+      
+      if (active.pending_request_id) {
+        setActiveBroadcastId(active.pending_request_id);
+      }
     } catch (err) {
       console.error('Failed to load active task:', err);
     } finally {
@@ -38,10 +46,30 @@ export default function ActiveTask() {
     }
   };
 
+  const loadBroadcastResponses = async (broadcastId: string) => {
+    if (!broadcastId) return;
+    
+    setLoadingResponses(true);
+    try {
+      const { responses } = await api.getBroadcastResponses(broadcastId);
+      setBroadcastResponses(responses);
+    } catch (err) {
+      console.error('Failed to load broadcast responses:', err);
+    } finally {
+      setLoadingResponses(false);
+    }
+  };
+
   useEffect(() => {
     loadActiveTask();
     loadIncomingRequests();
   }, []);
+
+  useEffect(() => {
+    if (activeBroadcastId) {
+      loadBroadcastResponses(activeBroadcastId);
+    }
+  }, [activeBroadcastId]);
 
   const handleAcceptRequest = async (requestId: string) => {
     setActionLoading(true);
@@ -53,6 +81,36 @@ export default function ActiveTask() {
       await loadIncomingRequests();
     } catch (err: any) {
       setError(err?.message || 'Failed to accept request');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAcceptBroadcastResponse = async (requestId: string) => {
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      await api.acceptRequest(requestId);
+      setActiveBroadcastId(null);
+      setBroadcastResponses([]);
+      await loadActiveTask();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to accept response');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeclineBroadcastResponse = async (requestId: string) => {
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      await api.declineRequest(requestId);
+      setBroadcastResponses((prev) => prev.filter((r) => r.id !== requestId));
+    } catch (err: any) {
+      setError(err?.message || 'Failed to decline response');
     } finally {
       setActionLoading(false);
     }
@@ -95,7 +153,7 @@ export default function ActiveTask() {
     setError(null);
 
     try {
-      await api.completeTask(data.task.id, { proof_photo_url: proofPhotoUrl || null });
+      await api.completeTask(data.task.id, proofPhotoUrl || null);
       await api.getWallet();
       navigate('/wallet');
     } catch (err: any) {
@@ -113,6 +171,7 @@ export default function ActiveTask() {
 
     try {
       await api.cancelRequest(data.pending_request_id);
+      setActiveBroadcastId(null);
       navigate('/home');
     } catch (err: any) {
       setError(err?.message || 'Failed to cancel request');
@@ -150,23 +209,118 @@ export default function ActiveTask() {
           </div>
         )}
 
-        {/* Pending Request (Requester) */}
-        {data.pending_request_id && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
-            <div className="text-4xl mb-4">⏳</div>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              Waiting for helper to accept
+        {/* Pending Request / Broadcast Responses (Requester) */}
+        {(data.pending_request_id || activeBroadcastId) && (
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-foreground mb-6">
+              {activeBroadcastId ? 'Broadcast Responses' : 'Waiting for helper to accept'}
             </h2>
-            <p className="text-muted-foreground mb-8">
-              Your request was sent and helper has been notified.
-            </p>
-            <button
-              onClick={handleCancelRequest}
-              disabled={actionLoading}
-              className="bg-destructive text-destructive-foreground py-3 px-4 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
-            >
-              {actionLoading ? 'Cancelling...' : 'Cancel Request'}
-            </button>
+
+            {/* If we have responses to the broadcast */}
+            {activeBroadcastId && (
+              <div className="space-y-4">
+                {loadingResponses ? (
+                  <div className="text-center py-10 text-muted-foreground">Loading responses...</div>
+                ) : broadcastResponses.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="text-4xl mb-4">📭</div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">
+                      No responses yet
+                    </h3>
+                    <p className="text-muted-foreground mb-8">
+                      Neighbors who respond will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  broadcastResponses.map((response) => (
+                    <div
+                      key={response.id}
+                      className="bg-card rounded-lg shadow-sm border border-border p-6"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center text-muted-foreground">
+                          {response.helper?.profile_photo ? (
+                            <img
+                              src={response.helper.profile_photo}
+                              alt={response.helper.first_name || '?'}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-lg">
+                              {response.helper?.first_name?.[0] || '?'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-foreground">
+                              {response.helper?.first_name || 'Neighbor'}
+                            </h3>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(response.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground mb-4">{response.message}</p>
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              Responded to your broadcast
+                            </span>
+                          </div>
+                          {response.status === 'sent' && (
+                            <div className="flex gap-4">
+                              <button
+                                onClick={() => handleAcceptBroadcastResponse(response.id)}
+                                disabled={actionLoading}
+                                className="flex-1 bg-primary text-primary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleDeclineBroadcastResponse(response.id)}
+                                disabled={actionLoading}
+                                className="flex-1 bg-secondary text-secondary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          )}
+                          {response.status === 'accepted' && (
+                            <div className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+                              Accepted
+                            </div>
+                          )}
+                          {response.status === 'declined' && (
+                            <div className="inline-block px-3 py-1 rounded-full bg-muted text-muted-foreground text-sm">
+                              Declined
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* If waiting for initial helper response (no broadcastId yet) */}
+            {!activeBroadcastId && (
+              <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
+                <div className="text-4xl mb-4">⏳</div>
+                <h2 className="text-xl font-bold text-foreground mb-3">
+                  Waiting for helper to accept
+                </h2>
+                <p className="text-muted-foreground mb-8">
+                  Your request was sent and helper has been notified.
+                </p>
+                <button
+                  onClick={handleCancelRequest}
+                  disabled={actionLoading}
+                  className="bg-destructive text-destructive-foreground py-3 px-4 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+                >
+                  {actionLoading ? 'Cancelling...' : 'Cancel Request'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -241,7 +395,7 @@ export default function ActiveTask() {
                   Task Completed!
                 </h3>
                 <p className="text-muted-foreground mb-6">
-                  You earned ${data.task.tip_amount_usd?.toFixed(2) || '0.00'} USD
+                  Task completed successfully.
                 </p>
                 <button
                   onClick={() => navigate('/wallet')}
@@ -261,7 +415,7 @@ export default function ActiveTask() {
         )}
 
         {/* Incoming Requests (Helper) */}
-        {incomingRequests.length > 0 && !data.task && (
+        {incomingRequests.length > 0 && !data.task && !activeBroadcastId && (
           <div className="mt-8">
             <h2 className="text-lg font-bold text-foreground mb-6">
               Incoming Requests
@@ -273,9 +427,6 @@ export default function ActiveTask() {
                   className="bg-card rounded-lg shadow-sm border border-border p-6"
                 >
                   <p className="text-foreground mb-4">{request.message}</p>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Suggested tip: ${request.suggested_tip_usd.toFixed(2)}
-                  </p>
                   <div className="flex gap-4">
                     <button
                       onClick={() => handleAcceptRequest(request.id)}
@@ -299,7 +450,7 @@ export default function ActiveTask() {
         )}
 
         {/* Empty State */}
-        {!data.task && !data.pending_request_id && incomingRequests.length === 0 && (
+        {!data.task && !data.pending_request_id && !activeBroadcastId && incomingRequests.length === 0 && (
           <div className="text-center py-16">
             <div className="text-4xl mb-4">📭</div>
             <h2 className="text-xl font-semibold text-foreground mb-3">

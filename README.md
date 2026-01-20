@@ -264,40 +264,125 @@ All users are in `demo_neighborhood` (Downtown Demo).
 - No "easy to add later" logic
 - Reliability over cleverness
 
-## Implementation Progress
+## Phase Roadmap & Implementation Status
 
 **Last Updated: 2026-01-19**
 
-### Completed Features (6/13 priority tasks)
+---
 
-✅ **Database Migrations** - All schema, RPC functions, and demo data applied successfully
-✅ **Map View** - Interactive Leaflet map showing nearby helpers with pins and user radius circle
-✅ **Radius Validation** - Distance check in request creation ensures helper is within user's radius
-✅ **Movement Duration Selection** - Modal for selecting 30/60/90/120 minute availability windows
-✅ **Helper Name Display** - RequestHelp page fetches and shows actual helper name
-✅ **Router Navigation** - Fixed navigation to use useNavigate instead of window.history.back()
+## Phase 1 Goal
 
-### Pending Features (7/13 priority tasks)
+Show the product publicly without breaking anything.
 
-⏳ **Push Notifications** - Firebase/OneSignal integration for real-time alerts
-  - New incoming request notification for helpers
-  - Request status updates (accepted/declined/cancelled) for requesters
+Not scale. Not polish. Not real-time magic.
 
-⏳ **Real-time Updates** - Supabase Realtime or polling for live data
-  - Active task status updates
-  - New helpers appearing/disappearing on map
-  - Incoming request notifications
+---
 
-⏳ **Background Jobs** - Cron/scheduled tasks for expiration
-  - Expire movement (set on_the_move to false when move_expires_at passes)
-  - Expire requests (set status to expired after 15 minutes)
+## Phase 1: Public Preview (Current)
 
-⏳ **Photo Upload** - Replace URL inputs with Supabase Storage file uploads
-  - Profile photo upload
-  - Task proof photo upload
+### ✅ Completed Features (6/7)
 
-⏳ **Notifications Toggle** - Backend endpoint to update notifications_enabled flag
+- **Database Migrations** - All schema, RPC functions, and demo data applied successfully
+- **Map View** - Interactive Leaflet map showing nearby helpers with pins and user radius circle
+- **Radius Validation** - Distance check in request creation ensures helper is within user's radius
+- **Movement Duration Selection** - Modal for selecting 30/60/90/120 minute availability windows
+- **Helper Name Display** - RequestHelp page fetches and shows actual helper name
+- **Router Navigation** - Fixed navigation to use useNavigate instead of window.history.back()
 
-⏳ **Type Consolidation** - Remove duplicate type definitions across db.ts and api-client.ts
+### ⏳ Phase 1 Remaining (3 items - Do Before Public)
 
-⏳ **Service Role Key Security** - Move from hardcoded values to zosite.json env vars
+**1. Notifications Toggle (Backend Flag)**
+- Store `notifications_enabled` flag
+- Default to `false` in preview mode
+- Required for preview safety - lets you disable noisy systems later
+
+**2. Type Consolidation**
+- Remove duplicate type definitions across `db.ts` and `api-client.ts`
+- Reduces bugs and prevents silent mismatches
+- Makes Phase 2 easier
+
+**3. Service Role Key Security (Non-Negotiable)**
+- Move from hardcoded values to `zosite.json` env vars
+- Hardcoded secrets + public preview = security risk
+- Zo dashboard env vars for production
+
+### 🔒 Read-Only UI + Preview Guards
+
+- Show the product without allowing irreversible actions
+- Block payments, final submits, state transitions
+- Clear "Preview Mode" indicators
+
+---
+
+## Phase 2: Controlled Interaction
+
+**Goal:** Users navigate and understand flows while preventing irreversible changes.
+
+**When:** After Phase 1 is stable and publicly viewable.
+
+### Phase 2 Backlog
+
+**Photo Uploads**
+- Replace URL inputs with Supabase Storage file uploads
+- Profile photo upload, task proof photo upload
+- Draft-state uploads (non-final)
+
+**Push Notifications**
+- Firebase/OneSignal integration for real-time alerts
+- Tests urgency, copy, and opt-in behavior
+- New incoming request notifications for helpers
+- Request status updates for requesters
+
+**Realtime Updates**
+- Supabase Realtime or polling for live data
+- Active task status updates
+- New helpers appearing/disappearing on map
+- Answers: "Does this feel alive?" and "Do users expect instant updates?"
+
+**Controlled Interactions**
+- Draft-state flows
+- Dry-run submit (validates but doesn't commit)
+- Blocked final actions with clear explanations
+- Preview-only event logging
+
+**Account Settings (Preview-Safe)**
+- View-first, limited edit for non-critical fields
+- Blocked: email, password, bank details, legal acceptance
+- Allowed: display name, preferences, help/support
+
+---
+
+## Phase 3+: Operational Mode
+
+**Goal:** Full execution mode with production infrastructure.
+
+### Phase 3+ Items
+
+**Background Jobs**
+- Cron/scheduled tasks for expiration
+- Expire movement (set `on_the_move` to false when `move_expires_at` passes)
+- Expire requests (set status to expired after 15 minutes)
+
+*Rationale:* These mutate state without direct user intent. Hard to reason about in preview. Dangerous with shared DB.
+
+If needed before Phase 3:
+- Simulate expirations on read
+- Use computed state instead of mutations
+
+---
+
+## Summary Table
+
+| Feature | Phase 1 | Phase 2 | Phase 3+ |
+|---------|---------|---------|----------|
+| Notifications Toggle | ✅ Do Now | | |
+| Type Consolidation | ✅ Do Now | | |
+| Service Role Key Security | ✅ Do Now | | |
+| Read-Only UI + Preview Guards | ✅ Do Now | | |
+| Photo Uploads | | ✅ Later | |
+| Push Notifications | | ✅ Later | |
+| Realtime Updates | | ✅ Later | |
+| Controlled Interactions | | ✅ Later | |
+| Draft-State Flows | | ✅ Later | |
+| Account Settings (Preview-Safe) | | ✅ Later | |
+| Background Jobs | | | ✅ Operational Mode |

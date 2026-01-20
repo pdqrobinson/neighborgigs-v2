@@ -3,6 +3,11 @@ const API_BASE = '/api/v1';
 
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
+// Helper: Generate deterministic idempotency key
+function generateKey(parts: string[]): string {
+  return parts.join(':');
+}
+
 export interface User {
   id: string;
   first_name: string;
@@ -15,6 +20,7 @@ export interface User {
     direction: 'out' | 'home' | null;
     expires_at: string | null;
   };
+  notifications_enabled: boolean;
 }
 
 export interface NearbyHelper {
@@ -84,33 +90,33 @@ export interface Broadcast {
   requester_id: string;
   broadcast_type: 'need_help' | 'offer_help';
   message: string;
-  suggested_tip_usd: number;
+  offer_usd: number;
   status: 'sent' | 'accepted' | 'declined' | 'expired';
   is_broadcast: boolean;
   created_at: string;
   expires_at: string;
-  broadcast_lat?: number | null;
-  broadcast_lng?: number | null;
-  location_context?: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific' | null;
-  place_name?: string | null;
-  place_address?: string | null;
-  distance_miles?: number | null;
-  requester?: { id: string; first_name: string; profile_photo: string | null };
+  broadcast_lat: number | null;
+  broadcast_lng: number | null;
+  location_context: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific' | null;
+  place_name: string | null;
+  place_address: string | null;
+  distance_miles: number | null;
+  requester?: {
+    id: string;
+    first_name: string | null;
+    profile_photo: string | null;
+  };
   description?: string; // Legacy field for backwards compatibility
 }
 
 function apiFetch<T>(
   endpoint: string,
-  options?: RequestInit & { idempotencyKey?: string }
+  options?: RequestInit
 ): Promise<T> {
   const headers: HeadersInit = {
     'X-User-Id': DEMO_USER_ID,
     'Content-Type': 'application/json',
   };
-
-  if (options?.idempotencyKey) {
-    headers['Idempotency-Key'] = options.idempotencyKey;
-  }
 
   return fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -152,6 +158,12 @@ export const api = {
       body: JSON.stringify({ lat, lng }),
     }),
 
+  updateNotifications: (notifications_enabled: boolean) =>
+    apiFetch<{ user: User }>('/me/notifications', {
+      method: 'PATCH',
+      body: JSON.stringify({ notifications_enabled }),
+    }),
+
   registerDevice: (push_token: string, push_platform: 'ios' | 'android' | 'web') =>
     apiFetch<{ device: any }>('/me/devices', {
       method: 'POST',
@@ -188,32 +200,59 @@ export const api = {
       location_context: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific';
       place_name?: string;
       place_address?: string;
-    }
-  ) =>
-    apiFetch<{ broadcast: Broadcast }>('/broadcasts', {
-      method: 'POST',
-      body: JSON.stringify({ type, message, expiresInMinutes, ...location }),
-    }),
+    },
+    offerUsd: number
+  ) => {
+    const idempotency_key = generateKey([
+      'broadcast:create',
+      DEMO_USER_ID,
+      type,
+      message,
+      String(expiresInMinutes),
+      String(location.lat),
+      String(location.lng),
+      String(offerUsd)
+    ]);
 
-  respondToBroadcast: (broadcastId: string, suggested_tip_usd: number) =>
-    apiFetch<{ request: TaskRequest }>(`/broadcasts/${broadcastId}/respond`, {
+    return apiFetch<{ broadcast: Broadcast; idempotent?: boolean }>('/broadcasts', {
       method: 'POST',
-      body: JSON.stringify({ suggested_tip_usd }),
-      idempotencyKey: crypto.randomUUID(),
-    }),
+      body: JSON.stringify({
+        type,
+        message,
+        expiresInMinutes,
+        ...location,
+        offerUsd,
+        idempotency_key
+      }),
+    });
+  },
+
+  respondToBroadcast: (broadcastId: string) => {
+    const idempotency_key = generateKey(['broadcast:respond', broadcastId, DEMO_USER_ID]);
+
+    return apiFetch<{ request: TaskRequest }>(`/broadcasts/${broadcastId}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ idempotency_key }),
+    });
+  },
 
   deleteBroadcast: (broadcastId: string) =>
     apiFetch<{ ok: boolean }>(`/broadcasts/${broadcastId}`, {
       method: 'DELETE',
     }),
 
+  getBroadcastResponses: (broadcastId: string) =>
+    apiFetch<{ responses: TaskRequest[] }>(`/broadcasts/${broadcastId}/responses`),
+
   // Requests
-  createRequest: (helper_id: string, message: string, suggested_tip_usd: number) =>
-    apiFetch<{ request: TaskRequest }>('/requests', {
+  createRequest: (helper_id: string, message: string) => {
+    const idempotency_key = generateKey(['request:create', helper_id, DEMO_USER_ID, message.trim()]);
+
+    return apiFetch<{ request: TaskRequest }>('/requests', {
       method: 'POST',
-      body: JSON.stringify({ helper_id, message, suggested_tip_usd }),
-      idempotencyKey: crypto.randomUUID(),
-    }),
+      body: JSON.stringify({ helper_id, message, idempotency_key }),
+    });
+  },
 
   getIncomingRequests: (status?: string) =>
     apiFetch<{ requests: TaskRequest[] }>(`/requests/incoming${status ? `?status=${status}` : ''}`),
@@ -228,11 +267,14 @@ export const api = {
       method: 'POST',
     }),
 
-  cancelRequest: (request_id: string) =>
-    apiFetch<{ request: TaskRequest }>(`/requests/${request_id}/cancel`, {
+  cancelRequest: (request_id: string) => {
+    const idempotency_key = generateKey(['request:cancel', request_id, DEMO_USER_ID]);
+
+    return apiFetch<{ request: TaskRequest }>(`/requests/${request_id}/cancel`, {
       method: 'POST',
-      idempotencyKey: crypto.randomUUID(),
-    }),
+      body: JSON.stringify({ idempotency_key }),
+    });
+  },
 
   // Tasks
   getActiveTask: () =>
@@ -243,12 +285,14 @@ export const api = {
       method: 'POST',
     }),
 
-  completeTask: (task_id: string, proof_photo_url?: string) =>
-    apiFetch<{ task: Task; wallet: Wallet }>(`/tasks/${task_id}/complete`, {
+  completeTask: (task_id: string, proof_photo_url?: string) => {
+    const idempotency_key = generateKey(['task:complete', task_id, DEMO_USER_ID]);
+
+    return apiFetch<{ task: Task; wallet: Wallet }>(`/tasks/${task_id}/complete`, {
       method: 'POST',
-      body: JSON.stringify({ proof_photo_url }),
-      idempotencyKey: crypto.randomUUID(),
-    }),
+      body: JSON.stringify({ proof_photo_url, idempotency_key }),
+    });
+  },
 
   // Wallet
   getWallet: () =>
@@ -259,10 +303,12 @@ export const api = {
       `/wallet/ledger?limit=${limit || 50}${cursor ? `&cursor=${cursor}` : ''}`
     ),
 
-  requestWithdrawal: (amount_usd: number) =>
-    apiFetch<{ ok: true; status: string; wallet: Wallet; withdrawal_id: string }>('/wallet/withdrawals', {
+  requestWithdrawal: (amount_usd: number) => {
+    const idempotency_key = generateKey(['withdrawal', DEMO_USER_ID, String(amount_usd)]);
+
+    return apiFetch<{ ok: true; status: string; wallet: Wallet; withdrawal_id: string }>('/wallet/withdrawals', {
       method: 'POST',
-      body: JSON.stringify({ amount_usd }),
-      idempotencyKey: crypto.randomUUID(),
-    }),
+      body: JSON.stringify({ amount_usd, idempotency_key }),
+    });
+  },
 };

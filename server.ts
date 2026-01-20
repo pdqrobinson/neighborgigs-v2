@@ -96,6 +96,7 @@ async function configureDevelopment(app: Hono): Promise<ViteDevServer> {
   const vite = await createViteServer({
     server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
+    optimizeDeps: { noDiscovery: true, include: [] },
   });
 
   app.use("*", async (c, next) => {

@@ -10,6 +10,7 @@ export default function Profile() {
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [photoUrl, setPhotoUrl] = useState(user?.profile_photo || '');
   const [saving, setSaving] = useState(false);
+  const [togglingNotifications, setTogglingNotifications] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleSave = async () => {
@@ -25,6 +26,21 @@ export default function Profile() {
       setMessage({ type: 'error', text: 'Failed to update profile' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleNotifications = async () => {
+    setTogglingNotifications(true);
+    setMessage(null);
+
+    try {
+      await api.updateNotifications(!user?.notifications_enabled);
+      await api.getMe();
+      setMessage({ type: 'success', text: `Notifications ${!user?.notifications_enabled ? 'enabled' : 'disabled'}` });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update notifications' });
+    } finally {
+      setTogglingNotifications(false);
     }
   };
 
@@ -131,11 +147,21 @@ export default function Profile() {
               <span className="text-muted-foreground">Radius</span>
               <span className="text-foreground font-medium">{user?.radius_miles} mile{user?.radius_miles !== 1 ? 's' : ''}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Notifications</span>
-              <span className="text-foreground font-medium">
-                {user?.notifications_enabled ? 'Enabled' : 'Disabled'}
-              </span>
+              <button
+                onClick={handleToggleNotifications}
+                disabled={togglingNotifications}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  user?.notifications_enabled ? 'bg-primary' : 'bg-input'
+                } ${togglingNotifications ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    user?.notifications_enabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

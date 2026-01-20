@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { db, type User, type NearbyHelper, type TaskRequest, type Task, type Wallet, type LedgerEntry } from './db';
+import { mapBroadcastRow } from '../shared/domain/broadcast';
 
 const api = new Hono();
 
@@ -642,51 +643,30 @@ api.get('/api/v1/broadcasts', async (c) => {
 api.post('/api/v1/broadcasts', async (c) => {
   const userId = getUserId(c);
   const body = await c.req.json();
-  const { type, message, expiresInMinutes } = body;
+  const { broadcast_type, message, offer_usd, lat, lng, location_context, place_name, place_address } = body;
 
-  console.log('=== CREATE BROADCAST ===', { userId, type, message, expiresInMinutes });
+  console.log('=== CREATE BROADCAST ===', { userId, broadcast_type, message, offer_usd, lat, lng, location_context, place_name, place_address });
 
-  if (!['need_help', 'offer_help'].includes(type)) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'type must be need_help or offer_help'), 400);
-  }
-
-  if (!message || message.length < 1 || message.length > 280) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'message must be 1-280 characters'), 400);
-  }
-
-  if (![15, 30, 60, 120].includes(expiresInMinutes)) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'expiresInMinutes must be 15, 30, 60, or 120'), 400);
-  }
-
-  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
-  const broadcastId = crypto.randomUUID();
-
-  console.log('Inserting broadcast:', { requester_id: userId, message, expires_at: expiresAt, type });
-
-  const { data, error } = await db
-    .from('task_requests')
-    .insert({
-      id: broadcastId,
-      requester_id: userId,
-      helper_id: null,
-      message,
-      suggested_tip_usd: 0,
-      status: 'sent',
-      expires_at: expiresAt,
-      is_broadcast: true,
-      broadcast_type: type,
-    })
-    .select()
-    .single();
-
-  console.log('Broadcast insert result:', { data, error });
+  const { data, error } = await db.rpc('create_broadcast', {
+    p_user_id: userId,
+    p_broadcast_type: broadcast_type,
+    p_message: message,
+    p_offer_usd: offer_usd,
+    p_lat: lat,
+    p_lng: lng,
+    p_location_context: location_context,
+    p_place_name: place_name ?? null,
+    p_place_address: place_address ?? null,
+  });
 
   if (error) {
-    console.error('Failed to create broadcast:', error);
-    return c.json(errorResponse('INTERNAL_ERROR', `Failed to create broadcast: ${error.message}`), 500);
+    return c.json(
+      errorResponse('INTERNAL_ERROR', error.message),
+      500
+    );
   }
 
-  return c.json({ broadcast: data }, 201);
+  return c.json({ id: data });
 });
 
 // 19) Respond to Broadcast

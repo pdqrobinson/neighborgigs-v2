@@ -334,3 +334,61 @@ as $$
   order by
     tr.created_at desc;
 $$;
+
+-- create_broadcast function: Creates a broadcast task request
+create or replace function create_broadcast(
+  p_user_id uuid,
+  p_broadcast_type text,
+  p_message text,
+  p_offer_usd numeric,
+  p_lat numeric,
+  p_lng numeric,
+  p_location_context text,
+  p_place_name text default null,
+  p_place_address text default null
+) returns uuid as $$
+declare
+  broadcast_id uuid;
+begin
+  -- Validate broadcast_type
+  if p_broadcast_type not in ('need_help', 'offer_help') then
+    raise exception 'Invalid broadcast_type: % (must be need_help or offer_help)', p_broadcast_type;
+  end if;
+
+  -- Insert broadcast task request
+  insert into task_requests (
+    id,
+    requester_id,
+    helper_id,
+    message,
+    suggested_tip_usd,
+    status,
+    expires_at,
+    is_broadcast,
+    broadcast_type,
+    broadcast_lat,
+    broadcast_lng,
+    location_context,
+    place_name,
+    place_address
+  ) values (
+    gen_random_uuid(),
+    p_user_id,
+    null,
+    p_message,
+    p_offer_usd,
+    'sent',
+    now() + interval '1 hour',
+    true,
+    p_broadcast_type,
+    p_lat,
+    p_lng,
+    p_location_context,
+    p_place_name,
+    p_place_address
+  )
+  returning id into broadcast_id;
+
+  return broadcast_id;
+end;
+$$ language plpgsql;
