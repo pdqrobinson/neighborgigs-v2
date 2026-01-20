@@ -100,6 +100,12 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900">NeighborGigs</h1>
             <div className="flex gap-2">
               <button
+                onClick={() => navigate('/')}
+                className="p-2 text-gray-600 hover:text-gray-900"
+              >
+                Home
+              </button>
+              <button
                 onClick={() => navigate('/profile')}
                 className="p-2 text-gray-600 hover:text-gray-900"
               >
