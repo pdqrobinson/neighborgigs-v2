@@ -61,27 +61,27 @@ export default function LocationGate() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full bg-card rounded-lg shadow-md p-8 text-center">
-        <h1 className="text-2xl font-bold text-foreground mb-4">
+        <h1 className="text-3xl font-bold text-foreground mb-6">
           NeighborGigs
         </h1>
         <p className="text-muted-foreground mb-8">
           Location permission is required to see nearby neighbors and request help.
         </p>
         {error && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+          <div className="mb-6 p-4 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive text-sm">
             {error}
           </div>
         )}
         <div className="space-y-4">
           <button
             onClick={requestLocation}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="w-full bg-primary text-primary-foreground py-4 px-6 rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
             Enable Location
           </button>
           <button
             onClick={useDemoMode}
-            className="w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-lg font-medium hover:bg-secondary/80 transition-colors"
+            className="w-full bg-secondary text-secondary-foreground py-4 px-6 rounded-lg font-medium hover:bg-secondary/80 transition-colors"
           >
             Demo Mode
           </button>

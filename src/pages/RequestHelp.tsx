@@ -63,13 +63,13 @@ export default function RequestHelp() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-6">
       {/* Header */}
       <div className="bg-card shadow-sm border-b border-border">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto px-4 py-3">
           <button
             onClick={() => navigate('/home')}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-primary hover:text-primary/80"
           >
             ← Cancel
           </button>
@@ -85,7 +85,7 @@ export default function RequestHelp() {
         </p>
 
         {error && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+          <div className="mb-6 p-4 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive">
             {error}
           </div>
         )}
@@ -114,16 +114,16 @@ export default function RequestHelp() {
             <label className="block text-sm font-medium text-foreground mb-4">
               Suggested Tip
             </label>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-3">
               {TIP_PRESETS.map((tip) => (
                 <button
                   key={tip}
                   onClick={() => setSelectedTip(tip)}
                   type="button"
-                  className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
+                  className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
                     selectedTip === tip
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-card text-foreground border-border hover:border-blue-400'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-foreground border-border hover:border-primary/50'
                   }`}
                 >
                   ${tip}
@@ -136,7 +136,7 @@ export default function RequestHelp() {
           <button
             onClick={handleSubmit}
             disabled={sending || !message.trim() || !selectedTip}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {sending ? 'Sending Request...' : 'Send Request'}
           </button>

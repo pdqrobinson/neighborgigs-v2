@@ -130,13 +130,13 @@ export default function ActiveTask() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-6">
       {/* Header */}
       <div className="bg-card shadow-sm border-b border-border">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto px-4 py-3">
           <button
             onClick={() => navigate('/home')}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-primary hover:text-primary/80"
           >
             ← Home
           </button>
@@ -145,7 +145,7 @@ export default function ActiveTask() {
 
       <div className="max-w-lg mx-auto px-4 py-8">
         {error && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+          <div className="mb-6 p-4 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive">
             {error}
           </div>
         )}
@@ -163,7 +163,7 @@ export default function ActiveTask() {
             <button
               onClick={handleCancelRequest}
               disabled={actionLoading}
-              className="bg-destructive text-white py-2.5 px-4 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+              className="bg-destructive text-destructive-foreground py-3 px-4 rounded-lg font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
             >
               {actionLoading ? 'Cancelling...' : 'Cancel Request'}
             </button>
@@ -172,12 +172,12 @@ export default function ActiveTask() {
 
         {/* Active Task */}
         {data.task && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-6 space-y-6">
             {/* On The Move Status Banner */}
             {(data.task.status === 'accepted' || data.task.status === 'in_progress') && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 text-blue-900">
-                  <span className="text-xl">🚶</span>
+              <div className="p-4 rounded-lg border bg-primary/10 border-primary/20">
+                <div className="flex items-center gap-3 text-primary">
+                  <span className="text-2xl">🚶</span>
                   {data.task.helper_id === user?.id ? (
                     <span className="font-medium">You are on the move</span>
                   ) : (
@@ -187,14 +187,14 @@ export default function ActiveTask() {
               </div>
             )}
 
-            <h2 className="text-xl font-bold text-foreground mb-6">
+            <h2 className="text-xl font-bold text-foreground mb-4">
               {data.task.status === 'accepted' && 'Task Accepted'}
               {data.task.status === 'in_progress' && 'Task in Progress'}
               {data.task.status === 'completed' && 'Task Complete'}
             </h2>
 
             {data.task.description && (
-              <div className="mb-8 p-4 bg-muted rounded-lg">
+              <div className="p-4 rounded-lg bg-muted">
                 <h3 className="text-sm font-medium text-foreground mb-2">Task</h3>
                 <p className="text-foreground">{data.task.description}</p>
               </div>
@@ -204,7 +204,7 @@ export default function ActiveTask() {
               <button
                 onClick={handleStartTask}
                 disabled={actionLoading}
-                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {actionLoading ? 'Starting...' : 'Start Task'}
               </button>
@@ -212,7 +212,7 @@ export default function ActiveTask() {
 
             {data.task.status === 'in_progress' && (
               <>
-                <div className="mb-8">
+                <div>
                   <label className="block text-sm font-medium text-foreground mb-3">
                     Proof Photo (Optional)
                   </label>
@@ -221,13 +221,13 @@ export default function ActiveTask() {
                     value={proofPhotoUrl}
                     onChange={(e) => setProofPhotoUrl(e.target.value)}
                     placeholder="https://example.com/proof.jpg"
-                    className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full border border-input rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <button
                   onClick={handleCompleteTask}
                   disabled={actionLoading}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {actionLoading ? 'Completing...' : 'Mark Complete'}
                 </button>
@@ -235,17 +235,17 @@ export default function ActiveTask() {
             )}
 
             {data.task.status === 'completed' && (
-              <div className="text-center">
+              <div className="text-center py-4">
                 <div className="text-4xl mb-4">✅</div>
                 <h3 className="text-xl font-bold text-foreground mb-3">
                   Task Completed!
                 </h3>
-                <p className="text-muted-foreground mb-8">
+                <p className="text-muted-foreground mb-6">
                   You earned ${data.task.tip_amount_usd?.toFixed(2) || '0.00'} USD
                 </p>
                 <button
                   onClick={() => navigate('/wallet')}
-                  className="bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors"
                 >
                   View Wallet
                 </button>
@@ -253,7 +253,7 @@ export default function ActiveTask() {
             )}
 
             {data.task.completed_at && (
-              <p className="text-sm text-muted-foreground mt-6 text-center">
+              <p className="text-sm text-muted-foreground mt-4 text-center">
                 Completed at {new Date(data.task.completed_at).toLocaleString()}
               </p>
             )}
@@ -280,14 +280,14 @@ export default function ActiveTask() {
                     <button
                       onClick={() => handleAcceptRequest(request.id)}
                       disabled={actionLoading}
-                      className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      className="flex-1 bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
                       Accept
                     </button>
                     <button
                       onClick={() => handleDeclineRequest(request.id)}
                       disabled={actionLoading}
-                      className="flex-1 bg-secondary text-secondary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
+                      className="flex-1 bg-secondary text-secondary-foreground py-3 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
                     >
                       Decline
                     </button>
@@ -310,7 +310,7 @@ export default function ActiveTask() {
             </p>
             <button
               onClick={() => navigate('/home')}
-              className="bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors"
             >
               Go to Home
             </button>

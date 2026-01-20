@@ -44,13 +44,13 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-6">
       {/* Header */}
       <div className="bg-card shadow-sm border-b border-border">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto px-4 py-3">
           <button
             onClick={() => navigate(-1)}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-primary hover:text-primary/80"
           >
             ← Back
           </button>
@@ -62,19 +62,19 @@ export default function Profile() {
 
         {message && (
           <div
-            className={`mb-6 p-4 rounded-lg ${
+            className={`mb-6 p-4 rounded-lg border ${
               message.type === 'success'
-                ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-destructive/10 border border-destructive/20 text-destructive'
+                ? 'bg-green-600/10 border-green-600/20 text-green-700'
+                : 'bg-destructive/10 border-destructive/20 text-destructive'
             }`}
           >
             {message.text}
           </div>
         )}
 
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6 space-y-8">
           {/* Profile Photo */}
-          <div className="mb-8">
+          <div>
             <label className="block text-sm font-medium text-foreground mb-3">
               Profile Photo
             </label>
@@ -84,7 +84,7 @@ export default function Profile() {
                 value={photoUrl}
                 onChange={(e) => setPhotoUrl(e.target.value)}
                 placeholder="https://example.com/photo.jpg"
-                className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full border border-input rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             ) : (
               <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center overflow-hidden">
@@ -104,7 +104,7 @@ export default function Profile() {
           </div>
 
           {/* First Name */}
-          <div className="mb-8">
+          <div>
             <label className="block text-sm font-medium text-foreground mb-3">
               First Name
             </label>
@@ -114,7 +114,7 @@ export default function Profile() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 maxLength={40}
-                className="w-full border border-input rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full border border-input rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             ) : (
               <p className="text-foreground text-lg">{firstName}</p>
@@ -141,18 +141,18 @@ export default function Profile() {
 
           {/* Actions */}
           {editing ? (
-            <div className="mt-8 flex gap-4">
+            <div className="flex gap-4">
               <button
                 onClick={handleCancel}
                 disabled={saving}
-                className="flex-1 bg-secondary text-secondary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-secondary text-secondary-foreground py-3 px-4 rounded-lg font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !firstName.trim()}
-                className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
@@ -160,7 +160,7 @@ export default function Profile() {
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="mt-8 w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors"
             >
               Edit Profile
             </button>
