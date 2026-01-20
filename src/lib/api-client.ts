@@ -76,9 +76,12 @@ export interface Broadcast {
   id: string;
   requester_id: string;
   broadcast_type: 'need_help' | 'offer_help';
-  description: string;
-  expires_at: string;
+  message: string;
+  suggested_tip_usd: number;
+  status: 'sent' | 'accepted' | 'declined' | 'expired';
+  is_broadcast: boolean;
   created_at: string;
+  expires_at: string;
   requester?: { id: string; first_name: string; profile_photo: string | null };
 }
 
@@ -161,10 +164,10 @@ export const api = {
   getBroadcasts: () =>
     apiFetch<{ broadcasts: Broadcast[] }>('/broadcasts'),
 
-  createBroadcast: (type: 'need_help' | 'offer_help', description: string, expiresInMinutes: number) =>
+  createBroadcast: (type: 'need_help' | 'offer_help', message: string, expiresInMinutes: number) =>
     apiFetch<{ broadcast: Broadcast }>('/broadcasts', {
       method: 'POST',
-      body: JSON.stringify({ type, description, expiresInMinutes }),
+      body: JSON.stringify({ type, message, expiresInMinutes }),
     }),
 
   respondToBroadcast: (broadcastId: string, suggested_tip_usd: number) =>
