@@ -642,9 +642,9 @@ api.get('/api/v1/broadcasts', async (c) => {
 api.post('/api/v1/broadcasts', async (c) => {
   const userId = getUserId(c);
   const body = await c.req.json();
-  const { type, message, expiresInMinutes } = body;
+  const { type, message, expiresInMinutes, lat, lng, location_context, place_name, place_address } = body;
 
-  console.log('=== CREATE BROADCAST ===', { userId, type, message, expiresInMinutes });
+  console.log('=== CREATE BROADCAST ===', { userId, type, message, expiresInMinutes, lat, lng, location_context });
 
   if (!['need_help', 'offer_help'].includes(type)) {
     return c.json(errorResponse('VALIDATION_ERROR', 'type must be need_help or offer_help'), 400);
@@ -658,15 +658,27 @@ api.post('/api/v1/broadcasts', async (c) => {
     return c.json(errorResponse('VALIDATION_ERROR', 'expiresInMinutes must be 15, 30, 60, or 120'), 400);
   }
 
-  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
-  const broadcastId = crypto.randomUUID();
+  // Validate location context
+  if (!lat || typeof lat !== 'number') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'lat is required and must be a number'), 400);
+  }
 
-  console.log('Inserting broadcast:', { requester_id: userId, message, expires_at: expiresAt, type });
+  if (!lng || typeof lng !== 'number') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'lng is required and must be a number'), 400);
+  }
+
+  if (!['here_now', 'heading_to', 'coming_from', 'place_specific'].includes(location_context)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'location_context must be one of: here_now, heading_to, coming_from, place_specific'), 400);
+  }
+
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+
+  console.log('Inserting broadcast with location:', { lat, lng, location_context, place_name, place_address });
 
   const { data, error } = await db
     .from('task_requests')
     .insert({
-      id: broadcastId,
+      id: crypto.randomUUID(),
       requester_id: userId,
       helper_id: null,
       message,
@@ -675,15 +687,18 @@ api.post('/api/v1/broadcasts', async (c) => {
       expires_at: expiresAt,
       is_broadcast: true,
       broadcast_type: type,
+      broadcast_lat: lat,
+      broadcast_lng: lng,
+      location_context,
+      place_name: place_name || null,
+      place_address: place_address || null
     })
     .select()
     .single();
 
-  console.log('Broadcast insert result:', { data, error });
-
   if (error) {
     console.error('Failed to create broadcast:', error);
-    return c.json(errorResponse('INTERNAL_ERROR', `Failed to create broadcast: ${error.message}`), 500);
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to create broadcast'), 500);
   }
 
   return c.json({ broadcast: data }, 201);

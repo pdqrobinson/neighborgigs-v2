@@ -43,6 +43,16 @@ export interface TaskRequest {
   expires_at: string;
   is_broadcast?: boolean;
   broadcast_type?: 'need_help' | 'offer_help' | null;
+  broadcast_lat?: number | null;
+  broadcast_lng?: number | null;
+  location_context?: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific' | null;
+  place_name?: string | null;
+  place_address?: string | null;
+  requester?: {
+    id: string;
+    first_name: string | null;
+    profile_photo: string | null;
+  };
 }
 
 export interface Task {

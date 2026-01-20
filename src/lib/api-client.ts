@@ -82,7 +82,14 @@ export interface Broadcast {
   is_broadcast: boolean;
   created_at: string;
   expires_at: string;
+  broadcast_lat?: number | null;
+  broadcast_lng?: number | null;
+  location_context?: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific' | null;
+  place_name?: string | null;
+  place_address?: string | null;
+  distance_miles?: number | null;
   requester?: { id: string; first_name: string; profile_photo: string | null };
+  description?: string; // Legacy field for backwards compatibility
 }
 
 function apiFetch<T>(
@@ -161,13 +168,24 @@ export const api = {
     }),
 
   // Broadcasts
-  getBroadcasts: () =>
-    apiFetch<{ broadcasts: Broadcast[] }>('/broadcasts'),
+  getBroadcasts: (lat?: number, lng?: number) =>
+    apiFetch<{ broadcasts: Broadcast[] }>(`/broadcasts${lat && lng ? `?lat=${lat}&lng=${lng}` : ''}`),
 
-  createBroadcast: (type: 'need_help' | 'offer_help', message: string, expiresInMinutes: number) =>
+  createBroadcast: (
+    type: 'need_help' | 'offer_help',
+    message: string,
+    expiresInMinutes: number,
+    location: {
+      lat: number;
+      lng: number;
+      location_context: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific';
+      place_name?: string;
+      place_address?: string;
+    }
+  ) =>
     apiFetch<{ broadcast: Broadcast }>('/broadcasts', {
       method: 'POST',
-      body: JSON.stringify({ type, message, expiresInMinutes }),
+      body: JSON.stringify({ type, message, expiresInMinutes, ...location }),
     }),
 
   respondToBroadcast: (broadcastId: string, suggested_tip_usd: number) =>
@@ -175,6 +193,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ suggested_tip_usd }),
       idempotencyKey: crypto.randomUUID(),
+    }),
+
+  deleteBroadcast: (broadcastId: string) =>
+    apiFetch<{ ok: boolean }>(`/broadcasts/${broadcastId}`, {
+      method: 'DELETE',
     }),
 
   // Requests

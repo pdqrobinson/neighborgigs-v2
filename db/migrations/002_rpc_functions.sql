@@ -272,3 +272,65 @@ as $$
   where status = 'sent' and expires_at < now()
   returning 1;
 $$;
+
+-- RPC: Get Broadcasts with Distance
+-- Returns broadcasts with distance calculation from user location
+create or replace function get_broadcasts_with_distance(
+  p_user_lat numeric,
+  p_user_lng numeric
+)
+returns table (
+  id uuid,
+  requester_id uuid,
+  broadcast_type text,
+  message text,
+  suggested_tip_usd numeric,
+  status text,
+  created_at timestamptz,
+  expires_at timestamptz,
+  broadcast_lat numeric,
+  broadcast_lng numeric,
+  location_context text,
+  place_name text,
+  place_address text,
+  distance_miles numeric,
+  requester_first_name text,
+  requester_profile_photo text
+)
+language sql
+as $$
+  select
+    tr.id,
+    tr.requester_id,
+    tr.broadcast_type,
+    tr.message,
+    tr.suggested_tip_usd,
+    tr.status,
+    tr.created_at,
+    tr.expires_at,
+    tr.broadcast_lat,
+    tr.broadcast_lng,
+    tr.location_context,
+    tr.place_name,
+    tr.place_address,
+    case
+      when tr.broadcast_lat is null or tr.broadcast_lng is null then null
+      else round(
+        (earth_distance(
+          ll_to_earth(p_user_lat, p_user_lng),
+          ll_to_earth(tr.broadcast_lat, tr.broadcast_lng)
+        ) / 1609.34)::numeric,
+        2
+      )
+    end as distance_miles,
+    u.first_name as requester_first_name,
+    u.profile_photo as requester_profile_photo
+  from task_requests tr
+  join users u on tr.requester_id = u.id
+  where
+    tr.is_broadcast = true
+    and tr.status = 'sent'
+    and tr.expires_at > now()
+  order by
+    tr.created_at desc;
+$$;
