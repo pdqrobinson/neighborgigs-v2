@@ -92,60 +92,62 @@ function configureProduction(app: Hono) {
  * - Static files from `public/` are served at root paths (matching Vite convention).
  * - Mirrors production routing semantics so SPA routes behave consistently.
  */
-async function configureDevelopment(app: Hono): Promise<ViteDevServer> {
-  const vite = await createViteServer({
-    server: { middlewareMode: true, hmr: false, ws: false },
-    appType: "custom",
-    optimizeDeps: { noDiscovery: true, include: [] },
-  });
+async function configureDevelopment(app: Hono): Promise<ViteDevServer | null> {
+  // In development, frontend is served by separate Vite dev server
+  // This server only handles API routes
 
-  app.use("*", async (c, next) => {
+  // Set up proxy to Vite for SPA routes during development
+  // This ensures index.html is served for all non-API routes
+  app.get("*", async (c, next) => {
+    // Only handle GET requests for non-API paths
     if (c.req.path.startsWith("/api/")) return next();
-    if (c.req.path === "/favicon.ico") return c.redirect("/favicon.svg", 302);
 
-    const url = c.req.path;
+    // For SPA routes in development, proxy to Vite dev server
     try {
-      if (url === "/" || url === "/index.html") {
-        let template = await Bun.file("./index.html").text();
-        template = await vite.transformIndexHtml(url, template);
-        return c.html(template);
-      }
+      // Fetch from Vite dev server (running on different port)
+      const vitePort = process.env.VITE_PORT || "3000";
+      const url = new URL(c.req.url);
 
-      const publicFile = Bun.file(`./public${url}`);
-      if (await publicFile.exists()) {
-        const stat = await publicFile.stat();
-        if (stat && !stat.isDirectory()) {
-          return new Response(publicFile, {
-            headers: { "Cache-Control": "no-cache" },
-          });
+      // In dev mode, we proxy to Vite which serves the SPA
+      const viteUrl = `http://localhost:${vitePort}${c.req.path}`;
+      const response = await fetch(viteUrl);
+
+      if (response.ok) {
+        const contentType = response.headers.get("content-type");
+        const headers: Record<string, string> = { "Cache-Control": "no-cache" };
+        if (contentType) {
+          headers["Content-Type"] = contentType;
         }
-      }
-
-      let result;
-      try {
-        result = await vite.transformRequest(url);
-      } catch {
-        result = null;
-      }
-
-      if (result) {
-        return new Response(result.code, {
-          headers: {
-            "Content-Type": "application/javascript",
-            "Cache-Control": "no-cache",
-          },
+        return new Response(response.body, {
+          status: response.status,
+          headers,
         });
       }
-
-      let template = await Bun.file("./index.html").text();
-      template = await vite.transformIndexHtml("/", template);
-      return c.html(template);
-    } catch (error) {
-      vite.ssrFixStacktrace(error as Error);
-      console.error(error);
-      return c.text("Internal Server Error", 500);
+    } catch (e) {
+      // If Vite isn't running, serve a helpful error
+      console.error("Vite dev server not accessible:", e);
+      return c.html(`
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Vite Dev Server Not Running</title>
+          </head>
+          <body>
+            <div style="padding: 40px; font-size: 16px; font-family: system-ui;">
+              <h1>Vite Dev Server Not Running</h1>
+              <p>Please start Vite in a separate terminal:</p>
+              <pre style="background: #f4f4f4; padding: 12px; border-radius: 4px;">bunx vite --host --port 3000</pre>
+              <p>Or check that the server is running on port 3000.</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
+
+    return next();
   });
 
-  return vite;
+  return null;
 }

@@ -3,7 +3,9 @@
   "type": "module",
   "scripts": {
     "clear-cache": "rm -rf node_modules/.vite",
-    "dev": "bun run clear-cache && NODE_ENV=development bun run --hot server.ts",
+    "dev-api": "bun run clear-cache && NODE_ENV=development bun run --hot server.ts",
+    "dev": "concurrently \"bunx vite --host --port 3000\" \"bun run dev-api\"",
+    "dev-vite": "bunx vite --host --port 3000",
     "build": "bun run clear-cache && vite build",
     "prod": "bun run build && NODE_ENV=production bun run server.ts",
     "preview": "bun run vite preview"
@@ -49,7 +51,8 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17",
     "vaul": "^1.1.2",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "concurrently": "^9.1.2"
   },
   "devDependencies": {
     "@types/bun": "1.2.21",

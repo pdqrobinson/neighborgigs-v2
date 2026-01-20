@@ -1,0 +1,119 @@
+# Minimal fixes to read idempotencyKey from body instead of header
+
+Fix these three endpoints in src/backend/routes.ts:
+
+## 1. POST /api/v1/broadcasts (line ~642)
+Replace direct insert with RPC call, read idempotencyKey from body
+
+```typescript
+api.post('/api/v1/broadcasts', async (c) => {
+  const userId = getUserId(c);
+  const body = await c.req.json();
+  const { type, message, expiresInMinutes, lat, lng, location_context, place_name, place_address, offerUsd, idempotencyKey } = body;
+
+  console.log('=== CREATE BROADCAST ===', { userId, idempotencyKey, type, message, expiresInMinutes, lat, lng, location_context });
+
+  // Require idempotency key for duplicate protection
+  if (!idempotencyKey) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'idempotencyKey required in request body to prevent duplicate submissions'), 400);
+  }
+
+  // Use RPC for idempotent broadcast creation
+  const { data: result, error } = await db.rpc('create_broadcast_with_idempotency', {
+    p_idempotency_key: idempotencyKey,
+    p_user_id: userId,
+    p_broadcast_type: type,
+    p_message: message,
+    p_expires_minutes: expiresInMinutes,
+    p_lat: lat,
+    p_lng: lng,
+    p_location_context: location_context,
+    p_place_name: place_name || null,
+    p_place_address: place_address || null,
+    p_offer_usd: offerUsd
+  });
+
+  if (error) {
+    console.error('RPC error:', error);
+    return c.json(errorResponse('INTERNAL_ERROR', error.message || 'Failed to create broadcast'), 500);
+  }
+
+  if (result?.error) {
+    return c.json(errorResponse(result.error.code || 'INTERNAL_ERROR', result.error.message || 'Failed to create broadcast'), result.error.status || 400);
+  }
+
+  return c.json({ broadcast: result.broadcast, idempotent: true }, 201);
+});
+```
+
+## 2. POST /api/v1/requests/:requestId/cancel (line ~542)
+Use RPC, read idempotencyKey from body
+
+```typescript
+api.post('/api/v1/requests/:requestId/cancel', async (c) => {
+  const userId = getUserId(c);
+  const requestId = c.req.param('requestId');
+  const body = await c.req.json();
+  const { idempotencyKey } = body;
+
+  console.log('=== CANCEL REQUEST ===', { requestId, userId, idempotencyKey });
+
+  // Use RPC for idempotent cancel
+  const { data: result, error } = await db.rpc('cancel_request_with_idempotency', {
+    p_idempotency_key: idempotencyKey,
+    p_user_id: userId,
+    p_request_id: requestId
+  });
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', error.message || 'Failed to cancel request'), 500);
+  }
+
+  if (result && 'error' in result) {
+    return c.json(result, 404);
+  }
+
+  return c.json(result);
+});
+```
+
+## 3. POST /api/v1/wallet/withdrawals (line ~921)
+Read idempotencyKey from body instead of header
+
+```typescript
+api.post('/api/v1/wallet/withdrawals', async (c) => {
+  const userId = getUserId(c);
+  const body = await c.req.json();
+  const { amount_usd, idempotencyKey } = body;
+
+  if (!idempotencyKey) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'idempotencyKey required in request body'), 400);
+  }
+
+  if (typeof amount_usd !== 'number' || amount_usd <= 0) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'amount_usd must be a positive number'), 400);
+  }
+
+  // Use RPC for atomic withdrawal with idempotency
+  const { data: result, error } = await db.rpc('request_withdrawal', {
+    p_idempotency_key: idempotencyKey,
+    p_user_id: userId,
+    p_amount_usd: amount_usd
+  });
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', error.message || 'Failed to process withdrawal'), 500);
+  }
+
+  if (result?.error) {
+    return c.json(errorResponse(result.error.code || 'CONFLICT', result.error.message), 409);
+  }
+
+  return c.json({
+    ok: true,
+    status: 'processed',
+    wallet: result?.wallet,
+    withdrawal_id: idempotencyKey
+  });
+});
+```

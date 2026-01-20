@@ -75,6 +75,53 @@ Where `active_holds` = `sum(amount_usd)` where `type = 'hold'` and `status = 'pe
 - **Routing**: React Router v7
 - **Database**: Supabase Postgres with earthdistance extension for geospatial queries
 
+## Development Setup
+
+### Architecture (Phase 1)
+
+In development mode, the site runs with **two separate servers**:
+
+1. **Vite Dev Server (Port 3000)** - Serves the frontend React application
+   - Auto-reloads on file changes
+   - Handles JSX/TypeScript transformations
+   - Serves static assets
+
+2. **API Server (Port 50430)** - Serves backend API endpoints
+   - Hono server on Bun
+   - Handles all `/api/*` routes
+   - Proxies SPA routes to Vite in development
+
+**To start development:**
+```bash
+# Terminal 1: Start Vite
+bun run dev-vite
+
+# Terminal 2: Start API server
+bun run dev-api
+```
+
+**Browser access:**
+- Frontend: http://localhost:3000
+- API: http://localhost:50430/api
+
+### Troubleshooting
+
+**Blank screen on startup:**
+- Ensure Vite is running on port 3000
+- Check browser console for React import errors
+- Clear Vite cache: `rm -rf node_modules/.vite`
+
+**API errors:**
+- Ensure API server is running on port 50430
+- Check Supabase connection in `zosite.json`
+- Verify database migrations are applied
+
+### Architecture Notes
+
+- **React 19 Compatibility**: Uses named imports (`import { createRoot }`) instead of default imports
+- **Hono Middleware**: API server proxies to Vite in development, serves static files in production
+- **Environment Variables**: Managed via `zosite.json` for both dev and prod
+
 ### Project Structure
 
 ```
