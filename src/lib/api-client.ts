@@ -58,15 +58,22 @@ export interface Task {
 
 export interface Wallet {
   wallet_id: string;
+  user_id?: string;
   available_usd: number;
   pending_usd: number;
-  updated_at: string;
+  ledger_usd?: number;
+  held_usd?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface LedgerEntry {
   id: string;
-  entry_type: 'credit' | 'debit';
+  wallet_id: string;
+  user_id: string;
+  type: 'credit' | 'debit' | 'hold' | 'release';
   amount_usd: number;
+  status: 'pending' | 'completed' | 'failed';
   source: string;
   reference_id: string | null;
   created_at: string;

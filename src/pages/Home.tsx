@@ -133,11 +133,11 @@ export default function Home() {
 
       {/* Broadcast Button - Centered */}
       {user && (
-        <div className="bg-muted/50 border-b border-border px-4 py-6">
+        <div className="bg-muted/30 border-b border-border px-4 py-6">
           <div className="max-w-lg mx-auto flex justify-center">
             <button
               onClick={() => setShowBroadcastModal(true)}
-              className="bg-blue-600 text-white py-3 px-8 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+              className="bg-primary text-primary-foreground py-3 px-8 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
             >
               Start a Broadcast
             </button>
@@ -151,7 +151,7 @@ export default function Home() {
           <button
             onClick={() => setViewMode('broadcasts')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'broadcasts' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+              viewMode === 'broadcasts' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Broadcasts
@@ -159,7 +159,7 @@ export default function Home() {
           <button
             onClick={() => setViewMode('map')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'map' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+              viewMode === 'map' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Map
@@ -167,7 +167,7 @@ export default function Home() {
           <button
             onClick={() => setViewMode('list')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'list' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+              viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             List
@@ -187,7 +187,7 @@ export default function Home() {
                 No broadcasts yet
               </h2>
               <p className="text-muted-foreground">
-                Be the first! Start a broadcast to offer help or ask for something.
+                Be first! Start a broadcast to offer help or ask for something.
               </p>
             </div>
           ) : (
@@ -221,8 +221,8 @@ export default function Home() {
                           <span
                             className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
                               broadcast.broadcast_type === 'need_help'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-green-100 text-green-700'
+                                ? 'bg-destructive/10 text-destructive'
+                                : 'bg-green-600/10 text-green-700'
                             }`}
                           >
                             {broadcast.broadcast_type === 'need_help' ? 'Need Help' : 'Offering Help'}
@@ -305,8 +305,8 @@ export default function Home() {
                 type="button"
                 className={`flex-1 py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
                   broadcastType === 'need_help'
-                    ? 'bg-red-600 text-white border-red-600'
-                    : 'bg-card text-foreground border-border hover:border-red-400'
+                    ? 'bg-destructive text-destructive-foreground border-destructive'
+                    : 'bg-card text-foreground border-border hover:border-destructive/50'
                 }`}
               >
                 Need Help
@@ -317,7 +317,7 @@ export default function Home() {
                 className={`flex-1 py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
                   broadcastType === 'offer_help'
                     ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-card text-foreground border-border hover:border-green-400'
+                    : 'bg-card text-foreground border-border hover:border-green-600/50'
                 }`}
               >
                 Offering Help
@@ -344,8 +344,8 @@ export default function Home() {
                   onClick={() => setLocationContext('here_now')}
                   className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
                     locationContext === 'here_now'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-card text-foreground border-border hover:border-blue-400'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-foreground border-border hover:border-primary/50'
                   }`}
                 >
                   📍 Here Now
@@ -355,8 +355,8 @@ export default function Home() {
                   onClick={() => setLocationContext('heading_to')}
                   className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
                     locationContext === 'heading_to'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-card text-foreground border-border hover:border-blue-400'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-foreground border-border hover:border-primary/50'
                   }`}
                 >
                   ➡️ Heading To
@@ -366,8 +366,8 @@ export default function Home() {
                   onClick={() => setLocationContext('coming_from')}
                   className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
                     locationContext === 'coming_from'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-card text-foreground border-border hover:border-blue-400'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-foreground border-border hover:border-primary/50'
                   }`}
                 >
                   ⬅️ Coming From
@@ -377,8 +377,8 @@ export default function Home() {
                   onClick={() => setLocationContext('place_specific')}
                   className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
                     locationContext === 'place_specific'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-card text-foreground border-border hover:border-blue-400'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-foreground border-border hover:border-primary/50'
                   }`}
                 >
                   🏪 Specific Place
@@ -419,8 +419,8 @@ export default function Home() {
                     type="button"
                     className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
                       selectedDuration === duration
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-card text-foreground border-border hover:border-blue-400'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-foreground border-border hover:border-primary/50'
                     }`}
                   >
                     {duration} min
@@ -443,7 +443,7 @@ export default function Home() {
               <button
                 onClick={createBroadcast}
                 disabled={!broadcastMessage.trim()}
-                className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-primary text-primary-foreground py-2.5 px-4 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 Broadcast
               </button>

@@ -99,8 +99,9 @@ export default function Wallet() {
           <div className="text-4xl font-bold text-foreground mb-4">
             ${(wallet?.available_usd || 0).toFixed(2)}
           </div>
-          <div className="text-sm text-muted-foreground">
-            Pending: ${(wallet?.pending_usd || 0).toFixed(2)} USD
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div>Total (ledger): ${(wallet?.ledger_usd || 0).toFixed(2)} USD</div>
+            <div>Held (reserved): ${(wallet?.held_usd || 0).toFixed(2)} USD</div>
           </div>
         </div>
 
@@ -150,22 +151,27 @@ export default function Wallet() {
                   key={entry.id}
                   className="flex justify-between items-start border-b border-border pb-4 last:border-b-0 last:pb-0"
                 >
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-foreground capitalize">
                       {entry.source}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(entry.created_at).toLocaleString()}
                     </p>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {entry.status === 'completed' ? '✓ Completed' : entry.status === 'pending' ? '⏳ Pending' : '✗ Failed'}
+                    </div>
                   </div>
                   <div
                     className={`text-lg font-semibold ${
-                      entry.entry_type === 'credit'
+                      entry.type === 'credit'
                         ? 'text-green-600'
-                        : 'text-red-600'
+                        : entry.type === 'debit'
+                        ? 'text-red-600'
+                        : 'text-gray-600'
                     }`}
                   >
-                    {entry.entry_type === 'credit' ? '+' : '-'}
+                    {entry.type === 'credit' ? '+' : entry.type === 'debit' ? '-' : ''}
                     ${entry.amount_usd.toFixed(2)}
                   </div>
                 </div>
