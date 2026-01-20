@@ -98,19 +98,21 @@ async function configureDevelopment(app: Hono): Promise<ViteDevServer | null> {
 
   // Set up proxy to Vite for SPA routes during development
   // This ensures index.html is served for all non-API routes
-  app.get("*", async (c, next) => {
-    // Only handle GET requests for non-API paths
+  app.on(["GET", "HEAD"], "*", async (c, next) => {
+    // Only handle requests for non-API paths
     if (c.req.path.startsWith("/api/")) return next();
 
     // For SPA routes in development, proxy to Vite dev server
     try {
       // Fetch from Vite dev server (running on different port)
       const vitePort = process.env.VITE_PORT || "3000";
-      const url = new URL(c.req.url);
-
-      // In dev mode, we proxy to Vite which serves the SPA
+      
+      // Normalize HEAD → GET for Vite (the core fix)
+      const method = c.req.method === "HEAD" ? "GET" : c.req.method;
+      
+      // Use the normalized method when fetching from Vite
       const viteUrl = `http://localhost:${vitePort}${c.req.path}`;
-      const response = await fetch(viteUrl);
+      const response = await fetch(viteUrl, { method });
 
       if (response.ok) {
         const contentType = response.headers.get("content-type");
@@ -118,7 +120,25 @@ async function configureDevelopment(app: Hono): Promise<ViteDevServer | null> {
         if (contentType) {
           headers["Content-Type"] = contentType;
         }
-        return new Response(response.body, {
+        
+        // When returning to client, respect the original HEAD request
+        // and return no body (that's the whole point of HEAD)
+        if (c.req.method === "HEAD") {
+          // For HEAD requests, we need to get the content-length from Vite
+          // but return no body
+          const body = await response.text();
+          headers["Content-Length"] = body.length.toString();
+          
+          return new Response(null, {
+            status: response.status,
+            headers,
+          });
+        }
+        
+        // For GET requests, proxy the full body
+        const body = await response.text();
+        
+        return new Response(body, {
           status: response.status,
           headers,
         });
