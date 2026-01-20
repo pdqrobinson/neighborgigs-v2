@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -23,7 +23,7 @@ interface MapViewProps {
 function MapController({ userLat, userLng, userRadiusMiles }: { userLat: number; userLng: number; userRadiusMiles: number }) {
   const map = useMap();
 
-  React.useEffect(() => {
+  useEffect(() => {
     map.setView([userLat, userLng], 13);
   }, [map, userLat, userLng]);
 
