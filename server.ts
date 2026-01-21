@@ -17,6 +17,16 @@ const mode: Mode =
  */
 app.get("/api/hello-zo", (c) => c.json({ msg: "Hello from Zo" }));
 
+// Health check endpoint - required for Cloudflare 520 diagnosis
+app.get("/health", (c) => {
+  return c.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: mode,
+    service: "neighborgigs",
+  });
+});
+
 // Event registration endpoints (namespaced under _zo to avoid conflicts)
 app.get("/api/_zo/demo/registrations", (c) => {
   const registrations = getRecentRegistrations();

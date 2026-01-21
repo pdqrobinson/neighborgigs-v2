@@ -1,34 +1,72 @@
--- ==============================================================================
--- IDEMPOTENCY HEADER ENFORCEMENT
+-- ===================================================================================================
+-- IDEMPOTENCY HEADER ENFORCEMENT (REVISION 2)
 -- Permanent fix for Idempotency-Key handling
---
--- Ensures:
--- 1. Idempotency-Key header is required for all state-changing operations
--- 2. Headers are not dropped by proxies or dev servers
--- 3. Database enforces idempotency as backstop
--- ==============================================================================
+-- ===================================================================================================
 
--- Table: idempotency_keys
--- Tracks all idempotent operations across the system
--- Serves as a database-level guard against duplicates
-create table if not exists idempotency_keys (
-  id uuid primary key default gen_random_uuid(),
-  key text not null,
-  user_id uuid not null references users(id) on delete cascade,
-  operation text not null,
-  endpoint text not null,
-  created_at timestamptz not null default now(),
-  
-  -- Prevent duplicate idempotency keys for same user + operation
-  unique(user_id, key, operation, endpoint)
-);
+-- Check if the idempotency_keys table already exists
+-- If it exists from migration 007, we need to update it or replace it
+do $$
+begin
+  if exists (select 1 from information_schema.tables where table_name = 'idempotency_keys') then
+    -- Table exists, check its schema
+    -- If it has 'operation' column, it's already correct (migration 016 was run before)
+    -- If it has 'action' column, it's from migration 007
+    if exists (
+      select 1 from information_schema.columns 
+      where table_name = 'idempotency_keys' and column_name = 'action'
+    ) then
+      -- Existing table from migration 007 - update it to new schema
+      -- Rename old table for backup
+      alter table idempotency_keys rename to idempotency_keys_old;
+      
+      -- Create new table with correct schema
+      create table idempotency_keys (
+        id uuid primary key default gen_random_uuid(),
+        key text not null,
+        user_id uuid not null references users(id) on delete cascade,
+        operation text not null,
+        endpoint text not null,
+        created_at timestamptz not null default now(),
+        
+        -- Prevent duplicate idempotency keys for same user + operation
+        unique(user_id, key, operation, endpoint)
+      );
+      
+      -- Index for fast lookups
+      create index idx_idempotency_keys_lookup 
+      on idempotency_keys(user_id, key, operation, endpoint, created_at);
+      
+      -- Migrate data from old table (convert 'action' to 'operation')
+      insert into idempotency_keys (key, user_id, operation, endpoint, created_at)
+      select 
+        key,
+        coalesce(user_id, '00000000-0000-0000-0000-000000000001'::uuid),
+        action as operation,
+        '/api/v1/legacy' as endpoint,
+        created_at
+      from idempotency_keys_old;
+    end if;
+  else
+    -- Table doesn't exist, create it fresh
+    create table if not exists idempotency_keys (
+      id uuid primary key default gen_random_uuid(),
+      key text not null,
+      user_id uuid not null references users(id) on delete cascade,
+      operation text not null,
+      endpoint text not null,
+      created_at timestamptz not null default now(),
+      
+      -- Prevent duplicate idempotency keys for same user + operation
+      unique(user_id, key, operation, endpoint)
+    );
+    
+    -- Index for fast lookups
+    create index idx_idempotency_keys_lookup 
+    on idempotency_keys(user_id, key, operation, endpoint, created_at);
+  end if;
+end $$;
 
--- Index for fast lookups
-create index idx_idempotency_keys_lookup 
-on idempotency_keys(user_id, key, operation, endpoint, created_at);
-
--- Cleanup: Old idempotency keys (> 90 days) are safe to delete
--- PostgreSQL can handle millions of rows without performance issues
+-- Comment on table
 comment on table idempotency_keys is 'Global idempotency tracking. Prevents duplicate operations even if app-layer checks fail.';
 comment on column idempotency_keys.key is 'The idempotency key from the client';
 comment on column idempotency_keys.operation is 'Operation type: create, update, delete, etc.';
