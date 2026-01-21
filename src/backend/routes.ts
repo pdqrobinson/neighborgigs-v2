@@ -13,14 +13,13 @@ api.use('/api/v1/*', async (c, next) => {
   
   // Log all headers in development for debugging
   if (process.env.NODE_ENV !== 'production') {
-    const allHeaders: Record<string, string> = {};
-    for (const [key, value] of c.req.headers.entries()) {
-      allHeaders[key] = value;
-    }
+    // Hono provides headers via c.req.header() - log individual headers
     console.log('=== REQUEST HEADERS ===', {
       method,
       path,
-      headers: allHeaders,
+      'x-user-id': c.req.header('X-User-Id'),
+      'idempotency-key': c.req.header('Idempotency-Key'),
+      'content-type': c.req.header('Content-Type'),
     });
   }
   
@@ -55,7 +54,8 @@ api.use('/api/v1/*', async (c, next) => {
         console.error('=== IDEMPOTENCY CHECK FAILED ===', {
           method,
           path,
-          headers: Object.fromEntries(c.req.headers.entries()),
+          'x-user-id': c.req.header('X-User-Id'),
+          'content-type': c.req.header('Content-Type'),
         });
         
         return c.json(
