@@ -2,8 +2,30 @@
 
 **Critical:** Always run migrations in this exact order. This prevents dependency conflicts and ensures schemas evolve correctly.
 
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-01-21  
 **Why:** Original numbering had conflicts (multiple 003_ and 004_ files) causing deployment failures.
+
+---
+
+## ⚠️ SUPABASE CREDENTIALS ISSUE - MANUAL UPLOAD WORKFLOW
+
+**Decision:** Due to persistent Supabase credential authentication failures, migrations are now deployed via **manual upload** instead of CLI automation.
+
+**What this means:**
+- ❌ No longer using `psql` command-line tool
+- ❌ No automated migration scripts
+- ✅ Manual upload via Supabase SQL Editor
+- ✅ Individual migration verification
+- ✅ Safe, observable, audit-friendly process
+
+**New workflow document:** See `MANUAL_MIGRATION_UPLOAD.md` for step-by-step instructions.
+
+**Why this is better:**
+- Eliminates credential authentication failures
+- Provides immediate feedback on each migration
+- Maintains Supabase's built-in migration tracking
+- Allows verification between each step
+- Easier to audit and troubleshoot
 
 ---
 
@@ -165,6 +187,30 @@ If some migrations succeeded and others failed:
 - Using `IF NOT EXISTS` incorrectly
 - Fix: Add `ON CONFLICT` or skip already-applied migrations
 
+**"Authentication failed" / "Connection refused"**
+- Supabase credentials not working
+- Fix: **Use manual upload workflow** (see `MANUAL_MIGRATION_UPLOAD.md`)
+
+### Supabase Credential Issues
+
+**Why CLI/automation fails:**
+- Supabase's password-based auth is unreliable
+- Connection pooling timeouts
+- SSL/TLS negotiation failures
+- Role permission inconsistencies
+
+**Solution: Manual Upload**
+1. Go to Supabase SQL Editor
+2. Copy migration SQL
+3. Paste and run manually
+4. Verify success before next migration
+
+**Manual workflow advantages:**
+- ✅ No credential issues
+- ✅ Immediate feedback
+- ✅ Step-by-step control
+- ✅ Built-in Supabase migration tracking
+
 ### Verification Queries
 
 **After Full Migration, Run:**
@@ -191,7 +237,29 @@ FROM users u LIMIT 3;
 
 ---
 
-## 📈 Success Metrics
+## 📋 Migration Tracking
+
+**Current Workflow:** Manual upload via Supabase SQL Editor
+
+**Active Migration Files:**
+- Location: `/home/workspace/neighborgigs/db/migrations/phase1_ordered/`
+- Total: 15 migrations (as of 2026-01-21)
+- Status: Ready for manual upload
+
+**Manual Upload Process:**
+1. Open `MANUAL_MIGRATION_UPLOAD.md`
+2. Follow step-by-step instructions
+3. Track progress in migration log
+4. Verify after each migration
+
+**When automation is restored:**
+- The migration files in `phase1_ordered/` remain unchanged
+- Scripts can be updated to use psql if credentials work
+- Manual workflow remains as reliable fallback
+
+---
+
+## 🎯 Success Metrics
 
 ### Verified Working After Migration
 - [ ] All RPCs return 200 (no function not found)
@@ -207,6 +275,7 @@ FROM users u LIMIT 3;
 - [ ] All critical user flows tested
 - [ ] Backups verified restorable
 - [ ] Rollback plan tested
+- [ ] Manual upload process documented
 
 ---
 
@@ -235,6 +304,27 @@ This migration ordering is complete and verified. Then you can safely start Phas
 
 ---
 
-**Remember:** Migration order matters. Run them in this exact sequence every time.
+## 🔄 Transition Notes
+
+**Current State (2026-01-21):**
+- Migrations prepared for manual upload
+- Supabase credentials unreliable
+- CLI automation blocked
+
+**Future State (if credentials fixed):**
+- Can switch back to psql automation
+- Manual workflow remains as fallback
+- Migration files unchanged
+
+**Decision Rationale:**
+- Manual upload is more reliable than CLI
+- Immediate verification at each step
+- No credential authentication failures
+- Better for audit trail
+- Easier troubleshooting
+
+---
+
+**Remember:** Migration order matters. Run them in exact sequence. Use manual upload workflow.
 
 🚀

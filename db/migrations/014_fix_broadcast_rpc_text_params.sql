@@ -1,51 +1,12 @@
--- Migration: Add broadcast idempotency and deduplication support
+-- Migration: Drop ALL versions of create_broadcast_with_idempotency and recreate
 --
--- This migration enables:
--- 1. Idempotent broadcast creation (prevent duplicate submissions)
--- 2. Future support for payment-protected broadcasts
---
--- APPLY INSTRUCTIONS:
--- 1. Go to https://supabase.com/dashboard/project/kxpglaetbawiugqmihfj/sql
--- 2. Copy and paste SQL below
--- 3. Click "Run" to execute
+-- Drops all possible parameter type combinations, then creates text-param version
 
--- Table: broadcast_requests (Idempotency tracking)
--- Stores successful broadcast submissions to prevent duplicates
-create table if not exists broadcast_requests (
-  id uuid primary key default gen_random_uuid(),
-  idempotency_key uuid not null unique,
-  user_id uuid not null references users(id) on delete cascade,
-  broadcast_type text not null check (broadcast_type in ('need_help', 'offer_help')),
-  message text not null check (length(message) >= 1 and length(message) <= 280),
-  expires_minutes int not null check (expires_minutes in (15, 30, 60, 120)),
-  broadcast_lat numeric,
-  broadcast_lng numeric,
-  location_context text,
-  place_name text,
-  place_address text,
-  price_usd numeric default 0 check (price_usd >= 0),
-  task_request_id uuid references task_requests(id) on delete set null,
-  created_at timestamptz not null default now(),
-  
-  -- Deduplication window: reject identical submissions within 30 seconds
-  unique(user_id, broadcast_type, message, created_at)
-);
+drop function if exists create_broadcast_with_idempotency(uuid, uuid, text, text, int, numeric, numeric, text, text, text, numeric) cascade;
+drop function if exists create_broadcast_with_idempotency(text, uuid, text, text, int, numeric, numeric, text, text, text, numeric) cascade;
+drop function if exists create_broadcast_with_idempotency(uuid, text, text, text, int, numeric, numeric, text, text, text, numeric) cascade;
+drop function if exists create_broadcast_with_idempotency(text, text, text, text, int, numeric, numeric, text, text, text, numeric) cascade;
 
--- Index for fast idempotency key lookup
-create index idx_broadcast_requests_idempotency_key on broadcast_requests(idempotency_key);
-
--- Index for recent broadcasts per user (cleanup)
-create index idx_broadcast_requests_user_created on broadcast_requests(user_id, created_at desc);
-
--- Comment
-comment on table broadcast_requests is 'Tracks broadcast submissions for idempotency and deduplication. Prevents duplicate submissions within 30 seconds.';
-comment on column broadcast_requests.idempotency_key is 'Unique key from client to ensure idempotent creation';
-comment on column broadcast_requests.price_usd is 'Future: price associated with broadcast when payments are enabled';
-
--- RPC: create_broadcast_with_idempotency
--- Idempotent broadcast creation with deduplication protection
--- Returns existing broadcast if idempotency_key already used
--- Prevents duplicate broadcasts (same user, type, message) within 30 seconds
 create or replace function create_broadcast_with_idempotency(
   p_idempotency_key text,
   p_user_id text,
@@ -85,7 +46,6 @@ begin
   end if;
   
   -- 2. Check for duplicate submission within 30 seconds
-  -- Prevents rapid resubmits of identical content
   if exists (
     select 1 from broadcast_requests
     where
@@ -142,10 +102,7 @@ begin
     );
   end if;
   
-  -- FUTURE: When payments are enabled, add wallet balance check here
-  -- FUTURE: Place hold on p_price_usd amount from user's wallet
-  
-  -- 7. Create the task request (broadcast)
+  -- 7. Create task request (broadcast)
   insert into task_requests (
     id,
     requester_id,
@@ -218,3 +175,5 @@ begin
   );
 end;
 $$;
+
+comment on function create_broadcast_with_idempotency is 'Idempotent broadcast creation with deduplication. Accepts text params for UUIDs to prevent uuid = text errors.';

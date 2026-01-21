@@ -601,56 +601,30 @@ api.get('/api/v1/broadcasts', async (c) => {
     return c.json(errorResponse('NOT_FOUND', 'User not found'), 404);
   }
 
-  // Try using RPC for distance calculation
+  // Use RPC for distance calculation from new broadcasts table
   const { data: broadcasts, error } = await db.rpc('get_broadcasts_with_distance', {
     p_user_lat: lat,
     p_user_lng: lng
   });
 
   if (error) {
-    console.error('RPC failed, falling back to direct query:', error);
-    // Fallback to direct query if RPC doesn't exist yet
-    const { data: fallback, error: fallbackError } = await db
-      .from('task_requests')
-      .select(`
-        *,
-        requester:users!task_requests_requester_id_fkey (
-          id,
-          first_name,
-          profile_photo
-        )
-      `)
-      .eq('is_broadcast', true)
-      .eq('status', 'sent')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false });
-
-    if (fallbackError) {
-      return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch broadcasts'), 500);
-    }
-
-    return c.json({ broadcasts: fallback || [] });
+    console.error('RPC failed:', error);
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch broadcasts'), 500);
   }
 
-  // Format RPC results to match expected structure
+  // Format results to match expected structure
   const formattedBroadcasts = (broadcasts || []).map((b: any) => ({
     id: b.id,
-    requester_id: b.requester_id,
-    broadcast_type: b.broadcast_type,
+    user_id: b.user_id,
     message: b.message,
-    suggested_tip_usd: b.suggested_tip_usd,
-    status: b.status,
-    is_broadcast: true,
-    created_at: b.created_at,
-    expires_at: b.expires_at,
-    broadcast_lat: b.broadcast_lat,
-    broadcast_lng: b.broadcast_lng,
+    offer_usd: b.offer_usd,
+    lat: b.lat,
+    lng: b.lng,
     location_context: b.location_context,
-    place_name: b.place_name,
-    place_address: b.place_address,
+    created_at: b.created_at,
     distance_miles: b.distance_miles,
     requester: {
-      id: b.requester_id,
+      id: b.user_id,
       first_name: b.requester_first_name,
       profile_photo: b.requester_profile_photo
     }
@@ -660,74 +634,86 @@ api.get('/api/v1/broadcasts', async (c) => {
   return c.json({ broadcasts: formattedBroadcasts });
 });
 
+
 // 18) Create Broadcast
 api.post('/api/v1/broadcasts', async (c) => {
   const userId = getUserId(c);
   const body = await c.req.json();
-  const { broadcast_type, message, offer_usd, expiresInMinutes, lat, lng, location_context, place_name, place_address } = body;
+  const { type, message, expiresInMinutes, lat, lng, offer_usd, idempotency_key } = body;
 
-  console.log('=== CREATE BROADCAST ===', { userId, broadcast_type, message, offer_usd, expiresInMinutes, lat, lng, location_context, place_name, place_address });
+  console.log('=== CREATE BROADCAST ===', { userId, type, message, expiresInMinutes, lat, lng });
 
-  // Validate required fields
-  if (!broadcast_type || !message || typeof offer_usd !== 'number') {
-    return c.json(errorResponse('VALIDATION_ERROR', 'broadcast_type, message, and offer_usd required'), 400);
+  // Validate type
+  if (!['need_help', 'offer_help'].includes(type)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'type must be need_help or offer_help'), 400);
   }
 
-  if (!['need_help', 'offer_help'].includes(broadcast_type)) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'broadcast_type must be need_help or offer_help'), 400);
-  }
-
-  if (message.length < 1 || message.length > 280) {
+  // Validate message
+  if (!message || message.length < 1 || message.length > 280) {
     return c.json(errorResponse('VALIDATION_ERROR', 'message must be 1-280 characters'), 400);
   }
 
-  if (offer_usd < 5 || offer_usd > 50 || offer_usd !== Math.round(offer_usd)) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'offer_usd must be a whole number between 5 and 50'), 400);
-  }
-
-  // Validate expiresInMinutes
-  if (!expiresInMinutes || ![15, 30, 60, 120].includes(expiresInMinutes)) {
+  // Validate expiration
+  if (![15, 30, 60, 120].includes(expiresInMinutes)) {
     return c.json(errorResponse('VALIDATION_ERROR', 'expiresInMinutes must be 15, 30, 60, or 120'), 400);
   }
 
-  // Generate idempotency key for the broadcast
-  const idempotencyKey = crypto.randomUUID();
+  // Validate location
+  if (!lat || typeof lat !== 'number') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'lat is required and must be a number'), 400);
+  }
 
-  // Use create_broadcast_with_idempotency with expires_minutes from request
-  const { data, error } = await db.rpc('create_broadcast_with_idempotency', {
-    p_idempotency_key: idempotencyKey,
+  if (!lng || typeof lng !== 'number') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'lng is required and must be a number'), 400);
+  }
+
+  // Validate offer_usd
+  if (typeof offer_usd !== 'number') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'offer_usd is required and must be a number'), 400);
+  }
+
+  if (offer_usd < 0) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'offer_usd must be 0 or positive'), 400);
+  }
+
+  // Idempotency key must be provided
+  if (!idempotency_key) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'idempotency_key is required'), 400);
+  }
+
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+
+  console.log('Creating broadcast:', { lat, lng, offer_usd });
+
+  // Use canonical RPC for broadcast creation with idempotency
+  // Note: location_context is not supported by canonical RPC - will be handled client-side if needed
+  const { data, error } = await db.rpc('create_broadcast', {
     p_user_id: userId,
-    p_broadcast_type: broadcast_type,
     p_message: message,
-    p_expires_minutes: expiresInMinutes,
+    p_price_usd: offer_usd,
     p_lat: lat,
     p_lng: lng,
-    p_location_context: location_context,
-    p_place_name: place_name ?? null,
-    p_place_address: place_address ?? null,
-    p_offer_usd: offer_usd
+    p_location_context: 'place_specific', // Default to place_specific for canonical RPC
+    p_idempotency_key: idempotency_key
   });
 
   if (error) {
-    return c.json(
-      errorResponse('INTERNAL_ERROR', error.message),
-      500
-    );
+    // Check for unique constraint violation (duplicate idempotency key)
+    if (error.code === '23505') {
+      return c.json(errorResponse('CONFLICT', 'Duplicate broadcast - please retry with a new idempotency key'), 409);
+    }
+    console.error('Failed to create broadcast:', error);
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to create broadcast'), 500);
   }
 
-  // Handle validation errors from the RPC function
-  if (data?.error) {
-    return c.json(
-      errorResponse(data.error.code || 'VALIDATION_ERROR', data.error.message),
-      400
-    );
+  // Add expires_at to the broadcast response since canonical RPC doesn't return it
+  if (data?.broadcast) {
+    data.broadcast.expires_at = expiresAt;
   }
 
-  return c.json({ 
-    id: data.broadcast?.id,
-    broadcast: data.broadcast
-  });
+  return c.json({ broadcast: data?.broadcast, idempotent: data?.idempotent }, 201);
 });
+
 
 // 19) Respond to Broadcast
 api.post('/api/v1/broadcasts/:id/respond', async (c) => {

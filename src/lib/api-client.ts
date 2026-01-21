@@ -197,7 +197,7 @@ export const api = {
     location: {
       lat: number;
       lng: number;
-      location_context: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific';
+      location_context?: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific';
       place_name?: string;
       place_address?: string;
     },
@@ -217,14 +217,11 @@ export const api = {
     return apiFetch<{ broadcast: Broadcast; idempotent?: boolean }>('/broadcasts', {
       method: 'POST',
       body: JSON.stringify({
-        broadcast_type: type,
+        type,
         message,
         expiresInMinutes,
         lat: location.lat,
         lng: location.lng,
-        location_context: location.location_context,
-        place_name: location.place_name,
-        place_address: location.place_address,
         offer_usd: offerUsd,
         idempotency_key
       }),

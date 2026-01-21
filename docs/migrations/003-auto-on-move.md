@@ -2,21 +2,33 @@
 
 **Purpose**: Repurpose the `on_the_move` feature to automatically activate when a helper accepts a task.
 
+**Updated:** 2026-01-21 (Manual upload workflow)
+
+---
+
+## ⚠️ SUPABASE CREDENTIALS - MANUAL UPLOAD REQUIRED
+
+**Current Workflow:** Manual upload via Supabase SQL Editor  
+**Reason:** Supabase credentials consistently fail for CLI/automation  
+**See:** `../MANUAL_MIGRATION_UPLOAD.md` for complete workflow
+
 ---
 
 ## Instructions
 
-### Option 1: Apply via Supabase SQL Editor (Recommended)
+### Option 1: Apply via Supabase SQL Editor (Recommended - Current Workflow)
 
 1. Go to your Supabase project dashboard
 2. Navigate to **SQL Editor**
 3. Create a new query
 4. Copy and paste the SQL below
 5. Click **Run**
+6. Verify success before proceeding to next migration
 
-### Option 2: Apply via psql (Command Line)
+### Option 2: Apply via psql (Command Line - Credentials May Fail)
 
 ```bash
+# WARNING: This may fail due to Supabase credential issues
 psql -h kxpglaetbawiugqmihfj.supabase.co -U postgres -d postgres -f 003_auto_on_move.sql
 ```
 
@@ -198,3 +210,9 @@ $$;
 ```
 
 ---
+
+## 📚 Reference
+
+- `../MANUAL_MIGRATION_UPLOAD.md` - Complete manual upload workflow
+- `../MIGRATION_ORDER.md` - Migration order and dependencies
+- `../MIGRATION_CANONICAL_ORDER.md` - Authoritative migration order
