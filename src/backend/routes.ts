@@ -735,7 +735,7 @@ api.get('/api/v1/broadcasts', async (c) => {
 api.post('/api/v1/broadcasts', async (c) => {
   const userId = getUserId(c);
   const body = await c.req.json();
-  const { type, message, expiresInMinutes, lat, lng, offer_usd, idempotency_key } = body;
+  const { type, message, expiresInMinutes, lat, lng, offer_usd } = body;
 
   console.log('=== CREATE BROADCAST ===', { userId, type, message, expiresInMinutes, lat, lng });
 
@@ -772,9 +772,18 @@ api.post('/api/v1/broadcasts', async (c) => {
     return c.json(errorResponse('VALIDATION_ERROR', 'offer_usd must be 0 or positive'), 400);
   }
 
-  // Idempotency key must be provided
-  if (!idempotency_key) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'idempotency_key is required'), 400);
+  // Idempotency key must be provided via header
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (!idempotencyKey) {
+    return c.json(
+      {
+        error: {
+          code: 'IDEMPOTENCY_KEY_REQUIRED',
+          message: 'Idempotency-Key header is required for broadcast creation',
+        },
+      },
+      400
+    );
   }
 
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
@@ -789,25 +798,32 @@ api.post('/api/v1/broadcasts', async (c) => {
     p_price_usd: offer_usd,
     p_lat: lat,
     p_lng: lng,
-    p_location_context: 'place_specific', // Default to place_specific for canonical RPC
-    p_idempotency_key: idempotency_key
+    p_idempotency_key: idempotencyKey,
   });
 
   if (error) {
     // Check for unique constraint violation (duplicate idempotency key)
     if (error.code === '23505') {
-      return c.json(errorResponse('CONFLICT', 'Duplicate broadcast - please retry with a new idempotency key'), 409);
+      return c.json(
+        {
+          error: {
+            code: 'CONFLICT',
+            message: 'Duplicate broadcast - you already created this broadcast',
+            idempotent: true,
+          },
+        },
+        409
+      );
     }
-    console.error('Failed to create broadcast:', error);
-    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to create broadcast'), 500);
+    return c.json(errorResponse('INTERNAL_ERROR', error.message), 500);
   }
 
-  // Add expires_at to the broadcast response since canonical RPC doesn't return it
-  if (data?.broadcast) {
-    data.broadcast.expires_at = expiresAt;
+  // If broadcast already exists with this idempotency key, return it
+  if (data?.idempotent) {
+    return c.json({ broadcast: data.broadcast, idempotent: true }, 200);
   }
 
-  return c.json({ broadcast: data?.broadcast, idempotent: data?.idempotent }, 201);
+  return c.json({ broadcast: data.broadcast, idempotent: false }, 201);
 });
 
 
