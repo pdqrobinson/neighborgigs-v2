@@ -738,55 +738,37 @@ api.post('/api/v1/broadcasts/:id/respond', async (c) => {
 
   console.log('=== RESPOND TO BROADCAST ===', { broadcastId, userId, suggested_tip_usd });
 
+  // Basic validation
   if (typeof suggested_tip_usd !== 'number' || suggested_tip_usd <= 0) {
     return c.json(errorResponse('VALIDATION_ERROR', 'suggested_tip_usd must be a positive number'), 400);
   }
 
-  if (![5, 10, 15, 20].includes(suggested_tip_usd)) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'suggested_tip_usd must be 5, 10, 15, or 20'), 400);
+  // Use RPC for type-safe broadcast response (UUID cast at DB boundary)
+  const { data, error } = await db.rpc('respond_to_broadcast', {
+    p_broadcast_id: broadcastId,
+    p_helper_id: userId,
+    p_suggested_tip_usd: suggested_tip_usd
+  });
+
+  if (error) {
+    console.error('RPC error:', error);
+    return c.json(errorResponse('INTERNAL_ERROR', error.message), 500);
   }
 
-  const { data: broadcast, error: broadcastError } = await db
-    .from('task_requests')
-    .select('*')
-    .eq('id', broadcastId)
-    .eq('is_broadcast', true)
-    .eq('status', 'sent')
-    .single();
-
-  if (broadcastError || !broadcast) {
-    console.error('Broadcast not found:', { broadcastId, error: broadcastError });
-    return c.json(errorResponse('NOT_FOUND', 'Broadcast not found'), 404);
+  if (data?.error) {
+    const errorCode = data.error.code;
+    const httpStatus =
+      errorCode === 'NOT_FOUND' ? 404 :
+      errorCode === 'FORBIDDEN' ? 403 :
+      errorCode === 'EXPIRED' ? 409 :
+      errorCode === 'CONFLICT' ? 409 : 400;
+    return c.json(
+      errorResponse(errorCode, data.error.message),
+      httpStatus
+    );
   }
 
-  if (broadcast.requester_id === userId) {
-    return c.json(errorResponse('FORBIDDEN', 'Cannot respond to your own broadcast'), 403);
-  }
-
-  if (broadcast.expires_at && new Date(broadcast.expires_at) < new Date()) {
-    return c.json(errorResponse('CONFLICT', 'Broadcast has expired'), 409);
-  }
-
-  const { data: taskRequest, error: requestError } = await db
-    .from('task_requests')
-    .insert({
-      task_id: null, // Will be set when task is created
-      requester_id: broadcast.requester_id,
-      helper_id: userId,
-      message: `Responding to broadcast: ${broadcast.message}`,
-      suggested_tip_usd,
-      status: 'sent',
-      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes
-    })
-    .select()
-    .single();
-
-  if (requestError) {
-    console.error('Failed to respond to broadcast:', requestError);
-    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to respond to broadcast'), 500);
-  }
-
-  return c.json({ request: taskRequest }, 201);
+  return c.json({ request: data.request }, 201);
 });
 
 // 20) Delete Broadcast
@@ -796,31 +778,26 @@ api.delete('/api/v1/broadcasts/:id', async (c) => {
 
   console.log('=== DELETE BROADCAST ===', { broadcastId, userId });
 
-  const { data: broadcast, error: broadcastError } = await db
-    .from('task_requests')
-    .select('*')
-    .eq('id', broadcastId)
-    .eq('is_broadcast', true)
-    .single();
+  // Use RPC for type-safe broadcast deletion (UUID cast at DB boundary)
+  const { data, error } = await db.rpc('delete_broadcast', {
+    p_broadcast_id: broadcastId,
+    p_user_id: userId
+  });
 
-  if (broadcastError || !broadcast) {
-    console.error('Broadcast not found:', { broadcastId, error: broadcastError });
-    return c.json(errorResponse('NOT_FOUND', 'Broadcast not found'), 404);
+  if (error) {
+    console.error('RPC error:', error);
+    return c.json(errorResponse('INTERNAL_ERROR', error.message), 500);
   }
 
-  if (broadcast.requester_id !== userId) {
-    return c.json(errorResponse('FORBIDDEN', 'You can only delete your own broadcasts'), 403);
-  }
-
-  const { error: deleteError } = await db
-    .from('task_requests')
-    .delete()
-    .eq('id', broadcastId)
-    .eq('requester_id', userId);
-
-  if (deleteError) {
-    console.error('Failed to delete broadcast:', deleteError);
-    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to delete broadcast'), 500);
+  if (data?.error) {
+    const errorCode = data.error.code;
+    const httpStatus =
+      errorCode === 'NOT_FOUND' ? 404 :
+      errorCode === 'FORBIDDEN' ? 403 : 400;
+    return c.json(
+      errorResponse(errorCode, data.error.message),
+      httpStatus
+    );
   }
 
   return c.json({ ok: true });
