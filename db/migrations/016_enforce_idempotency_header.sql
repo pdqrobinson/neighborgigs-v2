@@ -526,3 +526,23 @@ $$;
 
 comment on function get_broadcasts_with_distance(numeric, numeric) is
 'Returns active broadcasts with distance calculation from user location.';
+
+-- Step 7: Grant permissions
+grant all on table broadcasts to authenticated;
+grant all on table broadcasts to service_role;
+grant all on table broadcasts to anon;
+grant all on function create_broadcast_with_idempotency_v2(text, uuid, text, text, int, numeric, numeric, text, text, text, numeric) to service_role;
+grant all on function create_request_with_idempotency_v2(text, uuid, uuid, text, numeric) to service_role;
+grant all on function check_idempotency_key(text, uuid, text, text) to service_role;
+grant all on function record_idempotency_key(text, uuid, text, text) to service_role;
+grant all on function get_broadcasts_with_distance(numeric, numeric) to service_role;
+
+grant all on function create_broadcast_with_idempotency_v2(text, uuid, text, text, int, numeric, numeric, text, text, text, numeric) to anon;
+grant all on function create_request_with_idempotency_v2(text, uuid, uuid, text, numeric) to anon;
+grant all on function check_idempotency_key(text, uuid, text, text) to anon;
+grant all on function record_idempotency_key(text, uuid, text, text) to anon;
+grant all on function get_broadcasts_with_distance(numeric, numeric) to anon;
+
+-- Grant permissions to canonical RPC from migration 015
+grant all on function create_broadcast(uuid, text, numeric, double precision, double precision, text, text) to service_role;
+grant all on function create_broadcast(uuid, text, numeric, double precision, double precision, text, text) to anon;
