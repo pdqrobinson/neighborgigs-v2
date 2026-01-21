@@ -24,15 +24,19 @@ This phase answers:
 
 ### Key distinction (do not blur this):
 
-| Concept | Meaning |
-| --- | --- |
-| **Offer** | The amount promised upfront to get help |
-| **Tip** | Optional bonus added *after* completion |
+| Concept | Meaning | When Set | Who Sets |
+| --- | --- | --- | --- |
+| **Offer** | The amount promised upfront to get help | Phase 1 | Requester OR Helper |
+| **Tip** | Optional bonus added *after* completion | Phase 2 | Requester only |
 
-Offer = expectation\
-Tip = gratitude
+**Timeline:**
+1. **Phase 1:** Requester sets `offer_usd` when requesting help OR Helper sets `offer_usd` when offering to help
+2. **Phase 2:** Requester sets `tip_usd` after task is completed
 
-They are **not interchangeable**.
+Offer = expectation (part of the request)\
+Tip = gratitude (part of completion)
+
+They are **not interchangeable** and occur at different times in the workflow. Offer amounts are bidirectional - either party can attach a price when initiating contact.
 
 ---
 

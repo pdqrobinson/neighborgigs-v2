@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, type User, type NearbyHelper, type TaskRequest, type Task, type Wallet, type LedgerEntry } from './db';
+import { db, type User, type NearbyHelper, type TaskRequest, type Task, type Wallet, type WalletTransaction } from './db';
 import { mapBroadcastRow } from '../shared/domain/broadcast';
 
 const api = new Hono();
@@ -54,33 +54,39 @@ async function checkWithinRadius(
 api.get('/api/v1/me', async (c) => {
   const userId = getUserId(c);
   console.log('=== GET /api/v1/me HIT ===', { userId, headers: c.req.header() });
-  const { data, error } = await db
-    .from('users')
-    .select(`
-      id, first_name, profile_photo, neighborhood_id, radius_miles,
-      last_lat, last_lng, on_the_move, direction, move_expires_at,
-      notifications_enabled, created_at,
-      neighborhoods (id, name)
-    `)
-    .eq('id', userId)
-    .single();
+  // Use RPC for type-safe user fetch with UUID validation
+  const { data: userData, error: userError } = await db.rpc('get_current_user', {
+    p_user_id: userId
+  });
 
-  if (error || !data) {
-    console.log('User NOT FOUND', { userId, error, data });
+  if (userError || !userData) {
+    console.log('User NOT FOUND', { userId, userError, userData });
     return c.json(errorResponse('NOT_FOUND', 'User not found'), 404);
   }
 
+  // Check for RPC error response
+  if (userData.error) {
+    return c.json(errorResponse('NOT_FOUND', userData.error.message || 'User not found'), 404);
+  }
+
+  // Fetch neighborhood name separately (this is a simple lookup, safe to do here)
+  const { data: neighborhoodData, error: neighborhoodError } = await db
+    .from('neighborhoods')
+    .select('id, name')
+    .eq('id', userData.neighborhood_id)
+    .single();
+
   const user = {
-    id: data.id,
-    first_name: data.first_name,
-    profile_photo: data.profile_photo,
-    neighborhood: { id: data.neighborhoods?.id, name: data.neighborhoods?.name },
-    radius_miles: data.radius_miles,
-    last_location: { lat: data.last_lat, lng: data.last_lng },
+    id: userData.id,
+    first_name: userData.first_name,
+    profile_photo: userData.profile_photo,
+    neighborhood: neighborhoodData ? { id: neighborhoodData.id, name: neighborhoodData.name } : null,
+    radius_miles: userData.radius_miles,
+    last_location: { lat: userData.last_lat, lng: userData.last_lng },
     movement: {
-      on_the_move: data.on_the_move,
-      direction: data.direction,
-      expires_at: data.move_expires_at
+      on_the_move: userData.on_the_move,
+      direction: userData.direction,
+      expires_at: userData.move_expires_at
     }
   };
 
@@ -561,7 +567,7 @@ api.post('/api/v1/requests/:requestId/cancel', async (c) => {
   const { data: result, error } = await db.rpc('cancel_request_with_idempotency', {
     p_idempotency_key: idempotencyKey,
     p_request_id: requestId,
-    p_requester_id: userId
+    p_user_id: userId  // Fixed: was p_requester_id
   });
 
   if (error) {
@@ -658,20 +664,48 @@ api.get('/api/v1/broadcasts', async (c) => {
 api.post('/api/v1/broadcasts', async (c) => {
   const userId = getUserId(c);
   const body = await c.req.json();
-  const { broadcast_type, message, offer_usd, lat, lng, location_context, place_name, place_address } = body;
+  const { broadcast_type, message, offer_usd, expiresInMinutes, lat, lng, location_context, place_name, place_address } = body;
 
-  console.log('=== CREATE BROADCAST ===', { userId, broadcast_type, message, offer_usd, lat, lng, location_context, place_name, place_address });
+  console.log('=== CREATE BROADCAST ===', { userId, broadcast_type, message, offer_usd, expiresInMinutes, lat, lng, location_context, place_name, place_address });
 
-  const { data, error } = await db.rpc('create_broadcast', {
+  // Validate required fields
+  if (!broadcast_type || !message || typeof offer_usd !== 'number') {
+    return c.json(errorResponse('VALIDATION_ERROR', 'broadcast_type, message, and offer_usd required'), 400);
+  }
+
+  if (!['need_help', 'offer_help'].includes(broadcast_type)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'broadcast_type must be need_help or offer_help'), 400);
+  }
+
+  if (message.length < 1 || message.length > 280) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'message must be 1-280 characters'), 400);
+  }
+
+  if (offer_usd < 5 || offer_usd > 50 || offer_usd !== Math.round(offer_usd)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'offer_usd must be a whole number between 5 and 50'), 400);
+  }
+
+  // Validate expiresInMinutes
+  if (!expiresInMinutes || ![15, 30, 60, 120].includes(expiresInMinutes)) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'expiresInMinutes must be 15, 30, 60, or 120'), 400);
+  }
+
+  // Generate idempotency key for the broadcast
+  const idempotencyKey = crypto.randomUUID();
+
+  // Use create_broadcast_with_idempotency with expires_minutes from request
+  const { data, error } = await db.rpc('create_broadcast_with_idempotency', {
+    p_idempotency_key: idempotencyKey,
     p_user_id: userId,
     p_broadcast_type: broadcast_type,
     p_message: message,
-    p_offer_usd: offer_usd,
+    p_expires_minutes: expiresInMinutes,
     p_lat: lat,
     p_lng: lng,
     p_location_context: location_context,
     p_place_name: place_name ?? null,
     p_place_address: place_address ?? null,
+    p_offer_usd: offer_usd
   });
 
   if (error) {
@@ -681,7 +715,18 @@ api.post('/api/v1/broadcasts', async (c) => {
     );
   }
 
-  return c.json({ id: data });
+  // Handle validation errors from the RPC function
+  if (data?.error) {
+    return c.json(
+      errorResponse(data.error.code || 'VALIDATION_ERROR', data.error.message),
+      400
+    );
+  }
+
+  return c.json({ 
+    id: data.broadcast?.id,
+    broadcast: data.broadcast
+  });
 });
 
 // 19) Respond to Broadcast

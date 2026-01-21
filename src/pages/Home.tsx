@@ -486,24 +486,29 @@ export default function Home() {
             {/* Task Details (neutralized for Phase 1) */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-4">
-                Task Details
+                Tip Amount
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedOffer(15);
-                  setCustomOffer('');
-                }}
-                className={`w-full py-3 px-4 rounded-lg font-medium border-2 transition-colors ${
-                  selectedOffer > 0 && !customOffer
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-foreground border-border hover:border-primary/50'
-                }`}
-              >
-                Ready to help
-              </button>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {OFFER_PRESETS.map((offer) => (
+                  <button
+                    key={offer}
+                    onClick={() => {
+                      setSelectedOffer(offer);
+                      setCustomOffer('');
+                    }}
+                    type="button"
+                    className={`py-3 px-4 rounded-lg font-medium border-2 transition-colors text-sm ${
+                      selectedOffer === offer && !customOffer
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    ${offer}
+                  </button>
+                ))}
+              </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Indicate your availability for this task.
+                Required tip for helpers ($5-$50)
               </p>
             </div>
             <div className="flex gap-4">

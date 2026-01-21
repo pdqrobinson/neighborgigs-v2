@@ -96,9 +96,13 @@ If it doesn’t, nothing else matters.
 
   - Short text description
 
-  - Suggested tip (preset amounts)
+  - Offer amount (preset amounts: $5, $10, $15, $20)
 
 - Request is delivered in real time
+
+- **Note:** Helpers can also initiate contact with their own offer amount (e.g., "offering dog walks, $5")
+
+- Both parties can attach an offer amount when making first contact
 
 ---
 
@@ -190,10 +194,12 @@ What does NOT exist (yet):
 
 **Validation Rules:**
 - `offer_usd` must be integer (whole dollars only)
-- Minimum: $5
+- Minimum: $0 (allows $0 offers - no offer amount)
 - Maximum: $50
 - Server-side validation enforced
 - Phase 1 only: UI allows any integer within range
+
+**Important Clarification:** In Phase 1, `offer_usd` represents the **offer amount** to helpers for completing the task - not a tip. Tips are an optional bonus added AFTER task completion in Phase 2.
 
 **Product Impact:**
 - Sets value expectations instantly

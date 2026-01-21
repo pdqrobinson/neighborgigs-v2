@@ -113,9 +113,9 @@
 ### One-to-Many Relationships
 | From | To | Notes |
 |------|-----|-------|
-| `users` | `task_requests` | Requester can post multiple requests |
-| `users` | `request_applications` | Helper can apply to multiple requests |
-| `task_requests` | `request_applications` | Multiple applications per request |
+| `users` | `task_requests` | Requester can post multiple requests (sets offer_usd) |
+| `users` | `request_applications` | Helper can apply to multiple requests (sets offer_usd in bid) |
+| `task_requests` | `request_applications` | Multiple applications per request (each with their own offer_usd) |
 | `users` | `tasks` | Helper can complete multiple tasks (one at a time) |
 | `wallets` | `ledger_entries` | All money movements tracked |
 | `users` | `messages` | User sends/receives messages |
@@ -219,8 +219,14 @@ CREATE UNIQUE INDEX one_offer_payout_per_task
 -- Positive amounts
 ALTER TABLE ledger_entries ADD CONSTRAINT check_positive_amount CHECK (amount_usd > 0);
 
--- Valid offer range
-ALTER TABLE task_requests ADD CONSTRAINT check_offer_range CHECK (offer_usd BETWEEN 5 AND 50);
+-- Valid offer range (Phase 1: $5-$50; Phase 2: allow $0 offers)
+-- Note: offer_usd represents the upfront offer amount, not a tip
+-- Tips are added later in Phase 2 after task completion via tip_usd column
+ALTER TABLE task_requests ADD CONSTRAINT check_offer_range CHECK (offer_usd >= 0 AND offer_usd <= 50);
+
+-- Allow $0 offers in request_applications (Phase 2)
+-- Application offer_usd is the helper's proposed offer amount
+ALTER TABLE request_applications ADD CONSTRAINT check_valid_offer CHECK (offer_usd >= 0);
 
 -- Preview: cannot finalize
 ALTER TABLE task_requests ADD CONSTRAINT check_preview_not_finalized

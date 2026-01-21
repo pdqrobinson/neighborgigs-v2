@@ -217,11 +217,15 @@ export const api = {
     return apiFetch<{ broadcast: Broadcast; idempotent?: boolean }>('/broadcasts', {
       method: 'POST',
       body: JSON.stringify({
-        type,
+        broadcast_type: type,
         message,
         expiresInMinutes,
-        ...location,
-        offerUsd,
+        lat: location.lat,
+        lng: location.lng,
+        location_context: location.location_context,
+        place_name: location.place_name,
+        place_address: location.place_address,
+        offer_usd: offerUsd,
         idempotency_key
       }),
     });

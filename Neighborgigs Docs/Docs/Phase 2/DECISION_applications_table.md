@@ -13,9 +13,9 @@
 
 **Rename:** `applications` → `request_applications`
 
-**Definition:** A helper "applies/bids/offers" on a task request
+**Definition:** A helper "applies/bids/offers" on a task request with their own proposed offer amount
 
-**Scope:** Phase 2 only (helper bidding on requests)
+**Scope:** Phase 2 only (helper bidding on requests with a helper-set offer_usd)
 
 ---
 
@@ -31,7 +31,8 @@ CREATE TABLE request_applications (
   task_request_id UUID NOT NULL REFERENCES task_requests(id) ON DELETE CASCADE,
   helper_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
-  -- Offer details
+  -- Offer details (this is the offer amount, not a tip)
+  -- Tip is added later in Phase 2 after task completion
   offer_usd DECIMAL(10,2) NOT NULL,
   message TEXT,
 
@@ -48,7 +49,8 @@ CREATE TABLE request_applications (
   status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'accepted', 'rejected', 'withdrawn')),
 
   -- Constraints
-  CONSTRAINT check_valid_offer CHECK (offer_usd > 0),
+  -- Note: offer_usd >= 0 allows $0 offers (no-tip offers allowed in Phase 2)
+  CONSTRAINT check_valid_offer CHECK (offer_usd >= 0),
   CONSTRAINT check_application_not_finalized_in_preview
     CHECK (NOT (is_preview = true AND finalized_at IS NOT NULL))
 );

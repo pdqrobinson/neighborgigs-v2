@@ -98,7 +98,7 @@ ALTER TABLE task_requests
 
 ## 2. Request Applications Table (NEW - Phase 2 Only)
 
-**Definition:** A helper "applies/bids/offers" on a task request. See `DECISION_applications_table.md` for full details.
+**Definition:** A helper "applies/bids/offers" on a task request with their own proposed offer amount. This allows bidirectional offers - both requesters and helpers can attach a price when initiating contact. See `DECISION_applications_table.md` for full details.
 
 ```sql
 -- Create request_applications table (canonical name, NOT "applications")
@@ -111,7 +111,8 @@ CREATE TABLE request_applications (
   task_request_id UUID NOT NULL REFERENCES task_requests(id) ON DELETE CASCADE,
   helper_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
-  -- Offer details
+  -- Offer details (this is the offer amount, not a tip)
+  -- Tip is added later in Phase 2 after task completion
   offer_usd DECIMAL(10,2) NOT NULL,
   message TEXT,
 
@@ -125,7 +126,8 @@ CREATE TABLE request_applications (
   finalized_at TIMESTAMP WITH TIME ZONE,
 
   -- Constraints
-  CONSTRAINT check_valid_offer CHECK (offer_usd > 0),
+  -- Note: Phase 2 allows $0 offers (minimum was $5 in Phase 1)
+  CONSTRAINT check_valid_offer CHECK (offer_usd >= 0),
   CONSTRAINT check_application_status
     CHECK (status IN ('draft', 'submitted', 'pending', 'accepted', 'rejected', 'withdrawn')),
   CONSTRAINT check_application_not_finalized_in_preview
