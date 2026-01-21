@@ -808,6 +808,13 @@ api.post('/api/v1/broadcasts', async (c) => {
     p_idempotency_key: idempotencyKey,
   });
 
+  console.log('=== CREATE BROADCAST RPC RESPONSE ===', {
+    data,
+    error,
+    data_broadcast: data?.broadcast,
+    data_idempotent: data?.idempotent,
+  });
+
   if (error) {
     console.log('RPC create_broadcast error:', error);
     // Check for unique constraint violation (duplicate idempotency key)
