@@ -27,33 +27,33 @@ language sql
 security definer
 set search_path = public
 as $$
-  select
-    b.id,
-    b.user_id,
-    b.message,
-    b.price_usd,
-    b.created_at,
-    b.lat,
-    b.lng,
-    b.location_context,
-    case
-      when b.lat is null or b.lng is null then null
-      else round(
-        (earth_distance(
-          ll_to_earth(p_user_lat, p_user_lng),
-          ll_to_earth(b.lat, b.lng)
-        ) / 1609.34)::numeric,
-        2
-      )
-    end as distance_miles,
-    u.first_name as requester_first_name,
-    u.profile_photo as requester_profile_photo
-  from broadcasts b
-  join users u on b.user_id = u.id
-  where
-    b.created_at > now() - interval '1 hour'
-  order by
-    b.created_at desc;
+ select
+  b.id,
+  b.user_id,
+  b.message,
+  b.price_usd as offer_usd,
+  b.created_at,
+  b.lat,
+  b.lng,
+  b.location_context,
+  case
+    when b.lat is null or b.lng is null then null
+    else round(
+      (earth_distance(
+        ll_to_earth(p_user_lat, p_user_lng),
+        ll_to_earth(b.lat, b.lng)
+      ) / 1609.34)::numeric,
+      2
+    )
+  end as distance_miles,
+  u.first_name as requester_first_name,
+  u.profile_photo as requester_profile_photo
+from broadcasts b
+join users u on b.user_id = u.id
+where
+  b.created_at > now() - interval '1 hour'
+order by
+  b.created_at desc;
 $$;
 
 -- Grant permissions
