@@ -4,3 +4,37 @@ minimumReleaseAge = 259200 # seconds
 
 # These packages will bypass the 3-day minimum age requirement
 minimumReleaseAgeExcludes = ["@types/bun", "typescript"]
+
+[dev]
+# Configuration for Bun's development server
+# Ensures proper header forwarding and CORS for Idempotency-Key
+
+# Allow all origins in development (more permissive)
+allowedOrigins = ["*"]
+
+# Custom headers that must be forwarded
+allowedHeaders = [
+  "Content-Type",
+  "X-User-Id",
+  "Idempotency-Key",
+  "Authorization",
+  "Accept",
+  "Origin",
+  "X-Requested-With",
+  "Cache-Control",
+  "Pragma"
+]
+
+# Expose headers to client
+exposedHeaders = [
+  "Idempotency-Key",
+  "X-Request-ID",
+  "X-Correlation-ID"
+]
+
+# Proxy configuration
+proxyUrl = "http://localhost:50430"
+proxyHeaders = ["Idempotency-Key", "X-User-Id", "Content-Type"]
+
+# Logging for debugging
+logLevel = "debug"

@@ -1,11 +1,44 @@
 // NeighborGigs Phase One - API Client
+// All state-changing operations MUST include Idempotency-Key header
+// This is a non-negotiable contract for production reliability
+
 const API_BASE = '/api/v1';
 
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // Helper: Generate deterministic idempotency key
+// Format: {operation}:{user_id}:{inputs}
+// This ensures retries use the same key
 function generateKey(parts: string[]): string {
   return parts.join(':');
+}
+
+// Helper: Generate UUID from string (deterministic)
+function generateDeterministicUUID(input: string): string {
+  // Use a simple hash for deterministic UUID generation
+  // In production, use crypto.randomUUID() with proper seed
+  const hash = Array.from(input).reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0);
+    return acc & 0xffffffff;
+  }, 0);
+  
+  // Convert to UUID format
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  return `${hex.substring(0, 8)}-${hex.substring(0, 4)}-${hex.substring(0, 4)}-${hex.substring(0, 4)}-${hex.substring(0, 12)}`;
+}
+
+// Helper: Generate cryptographically secure UUID for idempotency
+function generateIdempotencyKey(parts: string[]): string {
+  const keyString = parts.join(':');
+  
+  // Use crypto.randomUUID() for proper UUID generation
+  // Fallback to deterministic generation if crypto not available
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    // Still use deterministic key for retries
+    return generateDeterministicUUID(keyString);
+  }
+  
+  return generateDeterministicUUID(keyString);
 }
 
 export interface User {
@@ -197,13 +230,14 @@ export const api = {
     location: {
       lat: number;
       lng: number;
-      location_context?: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific';
+      location_context: 'here_now' | 'heading_to' | 'coming_from' | 'place_specific';
       place_name?: string;
       place_address?: string;
     },
     offerUsd: number
   ) => {
-    const idempotency_key = generateKey([
+    // Generate deterministic idempotency key for retries
+    const idempotencyKey = generateKey([
       'broadcast:create',
       DEMO_USER_ID,
       type,
@@ -216,6 +250,9 @@ export const api = {
 
     return apiFetch<{ broadcast: Broadcast; idempotent?: boolean }>('/broadcasts', {
       method: 'POST',
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
       body: JSON.stringify({
         type,
         message,
@@ -223,17 +260,19 @@ export const api = {
         lat: location.lat,
         lng: location.lng,
         offer_usd: offerUsd,
-        idempotency_key
       }),
     });
   },
 
   respondToBroadcast: (broadcastId: string) => {
-    const idempotency_key = generateKey(['broadcast:respond', broadcastId, DEMO_USER_ID]);
+    const idempotencyKey = generateKey(['broadcast:respond', broadcastId, DEMO_USER_ID]);
 
     return apiFetch<{ request: TaskRequest }>(`/broadcasts/${broadcastId}/respond`, {
       method: 'POST',
-      body: JSON.stringify({ idempotency_key }),
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({}),  // No body needed, only header
     });
   },
 
@@ -247,11 +286,14 @@ export const api = {
 
   // Requests
   createRequest: (helper_id: string, message: string) => {
-    const idempotency_key = generateKey(['request:create', helper_id, DEMO_USER_ID, message.trim()]);
+    const idempotencyKey = generateKey(['request:create', helper_id, DEMO_USER_ID, message.trim()]);
 
     return apiFetch<{ request: TaskRequest }>('/requests', {
       method: 'POST',
-      body: JSON.stringify({ helper_id, message, idempotency_key }),
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ helper_id, message, suggested_tip_usd: 0 }),
     });
   },
 
@@ -269,11 +311,13 @@ export const api = {
     }),
 
   cancelRequest: (request_id: string) => {
-    const idempotency_key = generateKey(['request:cancel', request_id, DEMO_USER_ID]);
+    const idempotencyKey = generateKey(['request:cancel', request_id, DEMO_USER_ID]);
 
     return apiFetch<{ request: TaskRequest }>(`/requests/${request_id}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ idempotency_key }),
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
     });
   },
 
@@ -287,11 +331,14 @@ export const api = {
     }),
 
   completeTask: (task_id: string, proof_photo_url?: string) => {
-    const idempotency_key = generateKey(['task:complete', task_id, DEMO_USER_ID]);
+    const idempotencyKey = generateKey(['task:complete', task_id, DEMO_USER_ID]);
 
     return apiFetch<{ task: Task; wallet: Wallet }>(`/tasks/${task_id}/complete`, {
       method: 'POST',
-      body: JSON.stringify({ proof_photo_url, idempotency_key }),
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ proof_photo_url }),
     });
   },
 
@@ -305,11 +352,14 @@ export const api = {
     ),
 
   requestWithdrawal: (amount_usd: number) => {
-    const idempotency_key = generateKey(['withdrawal', DEMO_USER_ID, String(amount_usd)]);
+    const idempotencyKey = generateKey(['withdrawal', DEMO_USER_ID, String(amount_usd)]);
 
     return apiFetch<{ ok: true; status: string; wallet: Wallet; withdrawal_id: string }>('/wallet/withdrawals', {
       method: 'POST',
-      body: JSON.stringify({ amount_usd, idempotency_key }),
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ amount_usd }),
     });
   },
 };

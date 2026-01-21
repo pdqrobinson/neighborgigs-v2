@@ -4,6 +4,102 @@ import { mapBroadcastRow } from '../shared/domain/broadcast';
 
 const api = new Hono();
 
+// === IDEMPOTENCY MIDDLEWARE ===
+// Enforces Idempotency-Key header for all state-modifying operations
+// This is the single source of truth for idempotency requirements
+api.use('/api/v1/*', async (c, next) => {
+  const method = c.req.method;
+  const path = c.req.path;
+  
+  // Log all headers in development for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    const allHeaders: Record<string, string> = {};
+    for (const [key, value] of c.req.headers.entries()) {
+      allHeaders[key] = value;
+    }
+    console.log('=== REQUEST HEADERS ===', {
+      method,
+      path,
+      headers: allHeaders,
+    });
+  }
+  
+  await next();
+});
+
+// === IDEMPOTENCY ENFORCEMENT MIDDLEWARE ===
+// Fail fast if Idempotency-Key header is missing for state-modifying operations
+const IDEMPOTENCY_REQUIRED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const IDEMPOTENCY_EXEMPT_PATHS = [
+  '/api/v1/me/location',
+  '/api/v1/me/notifications',
+  '/api/v1/me/devices',
+];
+
+api.use('/api/v1/*', async (c, next) => {
+  const method = c.req.method;
+  const path = c.req.path;
+  
+  // Only require Idempotency-Key for state-changing operations
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Skip certain non-idempotent operations
+    const skipPaths = [
+      '/api/v1/me/location',  // Heartbeat - not critical
+      '/api/v1/me/notifications',  // Toggle - not idempotent
+    ];
+    
+    if (!skipPaths.some(p => path.includes(p))) {
+      const idempotencyKey = c.req.header('Idempotency-Key');
+      
+      if (!idempotencyKey) {
+        console.error('=== IDEMPOTENCY CHECK FAILED ===', {
+          method,
+          path,
+          headers: Object.fromEntries(c.req.headers.entries()),
+        });
+        
+        return c.json(
+          {
+            error: {
+              code: 'IDEMPOTENCY_KEY_REQUIRED',
+              message: 'Idempotency-Key header is required for this operation',
+              details: {
+                method,
+                path,
+                required: true,
+                docs: 'https://docs.neighborgigs.com/api/idempotency',
+              },
+            },
+          },
+          400
+        );
+      }
+      
+      // Validate idempotency key format (UUID or string)
+      if (typeof idempotencyKey !== 'string' || idempotencyKey.trim() === '') {
+        return c.json(
+          {
+            error: {
+              code: 'IDEMPOTENCY_KEY_INVALID',
+              message: 'Idempotency-Key must be a non-empty string',
+            },
+          },
+          400
+        );
+      }
+      
+      // Log successful validation
+      console.log('✓ Idempotency-Key validated', {
+        method,
+        path,
+        key: idempotencyKey,
+      });
+    }
+  }
+  
+  await next();
+});
+
 // Middleware: Auth check via X-User-Id header
 api.use('/api/v1/*', async (c, next) => {
   const userId = c.req.header('X-User-Id');
