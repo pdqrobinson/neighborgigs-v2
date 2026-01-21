@@ -523,41 +523,56 @@ api.post('/api/v1/requests/:requestId/accept', async (c) => {
 api.post('/api/v1/requests/:requestId/decline', async (c) => {
   const userId = getUserId(c);
   const requestId = c.req.param('requestId');
+  const idempotencyKey = c.req.header('Idempotency-Key');
 
-  const { data, error } = await db
-    .from('task_requests')
-    .update({ status: 'declined' })
-    .eq('id', requestId)
-    .eq('helper_id', userId)
-    .select()
-    .single();
-
-  if (error || !data) {
-    return c.json(errorResponse('NOT_FOUND', 'Request not found or you are not the helper'), 404);
+  if (!idempotencyKey) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'Idempotency-Key header required'), 400);
   }
 
-  return c.json({ request: data });
+  // Use RPC for atomic decline with idempotency
+  const { data: result, error } = await db.rpc('decline_request_with_idempotency', {
+    p_idempotency_key: idempotencyKey,
+    p_request_id: requestId,
+    p_helper_id: userId
+  });
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to decline request'), 500);
+  }
+
+  if (result?.error) {
+    return c.json(errorResponse(result.error.code || 'NOT_FOUND', result.error.message), 404);
+  }
+
+  return c.json({ request: result?.request });
 });
 
 // 11b) Cancel Request (requester can cancel their own sent request)
 api.post('/api/v1/requests/:requestId/cancel', async (c) => {
   const userId = getUserId(c);
   const requestId = c.req.param('requestId');
+  const idempotencyKey = c.req.header('Idempotency-Key');
 
-  const { data, error } = await db
-    .from('task_requests')
-    .update({ status: 'expired' })
-    .eq('id', requestId)
-    .eq('requester_id', userId)
-    .eq('status', 'sent')
-    .select()
-    .single();
-
-  if (error || !data) {
-    return c.json(errorResponse('NOT_FOUND', 'Request not found or cannot be cancelled'), 404);
+  if (!idempotencyKey) {
+    return c.json(errorResponse('VALIDATION_ERROR', 'Idempotency-Key header required'), 400);
   }
 
-  return c.json({ request: data });
+  // Use RPC for atomic cancellation with idempotency
+  const { data: result, error } = await db.rpc('cancel_request_with_idempotency', {
+    p_idempotency_key: idempotencyKey,
+    p_request_id: requestId,
+    p_requester_id: userId
+  });
+
+  if (error) {
+    return c.json(errorResponse('INTERNAL_ERROR', 'Failed to cancel request'), 500);
+  }
+
+  if (result?.error) {
+    return c.json(errorResponse(result.error.code || 'NOT_FOUND', result.error.message), 404);
+  }
+
+  return c.json({ request: result?.request });
 });
 
 // === BROADCAST ENDPOINTS ===
