@@ -85,6 +85,7 @@ api.post('/api/v1/requests/:requestId/decline', async (c) => {
 | `respond_to_broadcast_with_idempotency` | ✅ Active | `008_fix_idempotency_rpc_text_keys.sql` |
 | `cancel_request_with_idempotency` | ✅ Active | `008_fix_idempotency_rpc_text_keys.sql` |
 | `decline_request_with_idempotency` | 🟡 **Created, not applied** | `009_decline_request_rpc.sql` |
+| `get_current_user` | ✅ Active | `010_get_current_user_rpc.sql` |
 | `accept_request` | ✅ Active | `002_rpc_functions.sql` |
 | `complete_task` | ✅ Active | `002_rpc_functions.sql` |
 | `get_wallet` | ✅ Active | `003_wallet_canonical_model.sql` |
