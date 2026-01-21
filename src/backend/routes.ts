@@ -809,7 +809,7 @@ api.post('/api/v1/broadcasts', async (c) => {
   });
 
   if (error) {
-    console.error('RPC create_broadcast error:', error);
+    console.log('RPC create_broadcast error:', error);
     // Check for unique constraint violation (duplicate idempotency key)
     if (error.code === '23505') {
       return c.json(
