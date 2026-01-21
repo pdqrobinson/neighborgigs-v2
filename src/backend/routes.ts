@@ -708,6 +708,12 @@ api.get('/api/v1/broadcasts', async (c) => {
     return c.json(errorResponse('INTERNAL_ERROR', 'Failed to fetch broadcasts'), 500);
   }
 
+  console.log('=== RPC RESULT ===', { 
+    count: broadcasts?.length || 0,
+    first: broadcasts?.[0],
+    error,
+  });
+
   // Format results to match expected structure
   const formattedBroadcasts = (broadcasts || []).map((b: any) => ({
     id: b.id,
