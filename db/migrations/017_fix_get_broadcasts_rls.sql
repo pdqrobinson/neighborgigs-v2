@@ -31,7 +31,7 @@ as $$
     b.id,
     b.user_id,
     b.message,
-    b.offer_usd,
+    b.price_usd,
     b.created_at,
     b.lat,
     b.lng,
