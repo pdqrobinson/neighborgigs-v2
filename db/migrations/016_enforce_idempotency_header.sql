@@ -465,3 +465,64 @@ select count(*) as total_idempotency_keys from idempotency_keys;
 -- 1. idempotency_keys table exists with columns: id, key, user_id, operation, endpoint, created_at
 -- 2. All RPC functions exist and are callable
 -- 3. total_idempotency_keys = 0 initially
+
+-- Migration: Update get_broadcasts_with_distance to use new broadcasts table
+create or replace function get_broadcasts_with_distance(
+  p_user_lat numeric,
+  p_user_lng numeric
+)
+returns table (
+  id uuid,
+  user_id uuid,
+  broadcast_type text,
+  message text,
+  offer_usd numeric,
+  created_at timestamptz,
+  expires_at timestamptz,
+  broadcast_lat numeric,
+  broadcast_lng numeric,
+  location_context text,
+  place_name text,
+  place_address text,
+  distance_miles numeric,
+  requester_first_name text,
+  requester_profile_photo text
+)
+language sql
+as $$
+  select
+    b.id,
+    b.user_id,
+    'need_help' as broadcast_type,  -- broadcasts table doesn't have type, default to need_help
+    b.message,
+    b.price_usd as offer_usd,
+    b.created_at,
+    now() + interval '1 hour' as expires_at,  -- broadcasts table doesn't store expiry
+    b.lat as broadcast_lat,
+    b.lng as broadcast_lng,
+    b.location_context,
+    null as place_name,  -- broadcasts table doesn't have these
+    null as place_address,
+    case
+      when b.lat is null or b.lng is null then null
+      else round(
+        (earth_distance(
+          ll_to_earth(p_user_lat, p_user_lng),
+          ll_to_earth(b.lat, b.lng)
+        ) / 1609.34)::numeric,
+        2
+      )
+    end as distance_miles,
+    u.first_name as requester_first_name,
+    u.profile_photo as requester_profile_photo
+  from broadcasts b
+  join users u on b.user_id = u.id
+  where
+    b.created_at > now() - interval '1 hour'  -- Default 1 hour expiry
+    and b.created_at + interval '1 hour' > now()
+  order by
+    b.created_at desc;
+$$;
+
+comment on function get_broadcasts_with_distance(numeric, numeric) is
+'Returns active broadcasts with distance calculation from user location.';
